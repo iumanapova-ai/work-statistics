@@ -1,10 +1,9 @@
-// script.js
-// supabase УЖЕ СОЗДАН в config.js, НЕ создаём его заново!
+// script.js - используем sb вместо supabase
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 console.log('=== СКРИПТ ЗАГРУЖЕН ===');
-console.log('supabase готов:', typeof supabase);
+console.log('sb готов:', typeof sb);
 
-// Функция показа сообщений
 function showMessage(text, type) {
     const msgDiv = document.getElementById('message');
     if (!msgDiv) return;
@@ -16,14 +15,13 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-// Загрузка записей
 async function loadRecords() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>';
 
-    const { data, error } = await supabase
+    const { data, error } = await sb
         .from('Consultation_scenario')
         .select('*')
         .order('date', { ascending: false });
@@ -49,9 +47,8 @@ async function loadRecords() {
     `).join('');
 }
 
-// Добавление записи
 async function addRecord(date, link, comment) {
-    const { data, error } = await supabase
+    const { data, error } = await sb
         .from('Consultation_scenario')
         .insert([{ date: date, link: link, comment: comment || null }]);
 
@@ -70,11 +67,10 @@ async function addRecord(date, link, comment) {
     return true;
 }
 
-// Удаление записи
 window.deleteRecord = async function(id) {
     if (!confirm('Удалить запись?')) return;
 
-    const { error } = await supabase
+    const { error } = await sb
         .from('Consultation_scenario')
         .delete()
         .eq('id', id);
@@ -87,7 +83,6 @@ window.deleteRecord = async function(id) {
     }
 };
 
-// Обработка формы
 const form = document.getElementById('consultationForm');
 if (form) {
     form.addEventListener('submit', async (e) => {
@@ -115,11 +110,9 @@ if (form) {
     });
 }
 
-// Кнопка обновления
 const refreshBtn = document.getElementById('refreshBtn');
 if (refreshBtn) {
     refreshBtn.addEventListener('click', () => loadRecords());
 }
 
-// Загружаем записи
 loadRecords();
