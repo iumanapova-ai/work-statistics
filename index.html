@@ -65,7 +65,7 @@
         <!-- Таблица с данными -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="currentTableTitle" style="margin: 0;">📋 Все записи</h2>
+                <h2>📋 Все записи</h2>
                 <div class="filter-icon" id="filterIcon">
                     🔍
                 </div>
@@ -98,14 +98,20 @@
                 </div>
             </div>
 
+            <!-- Спиннер загрузки -->
+            <div id="loadingSpinner" class="spinner-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Загрузка данных...</p>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table class="records-table">
                     <thead>
                         <tr>
                             <th style="width: 60px;">№</th>
-                            <th style="width: 200px;">Источник</th>
+                            <th style="width: 180px;">Источник</th>
                             <th>Данные</th>
-                            <th style="width: 120px;">Действия</th>
+                            <th style="width: 110px;">Действия</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">

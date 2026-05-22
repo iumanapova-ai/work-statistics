@@ -3,7 +3,11 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allRecords = [];
 let filteredRecords = [];
-let currentActiveTable = 'Consultation_scenario';
+let isLoading = false;
+let cachedData = null;
+let lastLoadTime = 0;
+const CACHE_TTL = 30000; // 30 секунд
+
 let currentFilters = {
     dateFrom: '',
     dateTo: '',
@@ -11,8 +15,18 @@ let currentFilters = {
     text: ''
 };
 
-// ========== РАБОТА С МЕРАМИ ==========
+function showMessage(text, type) {
+    let msgDiv = document.getElementById('message');
+    if (!msgDiv) return;
+    msgDiv.textContent = text;
+    msgDiv.className = `message ${type}`;
+    msgDiv.style.display = 'block';
+    setTimeout(() => {
+        if (msgDiv) msgDiv.style.display = 'none';
+    }, 3000);
+}
 
+// ========== РАБОТА С МЕРАМИ ==========
 function addMeasureByType(type) {
     const container = document.getElementById('measuresContainer');
     if (!container) return;
@@ -41,6 +55,7 @@ function addMeasureByType(type) {
             placeholder = 'Ссылка на ошибку';
             inputType = 'url';
             break;
+        default: return;
     }
 
     blockDiv.innerHTML = `
@@ -48,7 +63,7 @@ function addMeasureByType(type) {
             <strong>${title}</strong>
             <button type="button" class="remove-measure-btn" onclick="this.closest('.measure-card').remove()">✖️</button>
         </div>
-        <input type="${inputType}" class="measure-value" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+        <input type="${inputType}" class="measure-value" placeholder="${placeholder}">
     `;
 
     container.appendChild(blockDiv);
@@ -73,23 +88,11 @@ function collectMeasures() {
     return measures;
 }
 
-function showMessage(text, type) {
-    let msgDiv = document.getElementById('message');
-    if (!msgDiv) return;
-    msgDiv.textContent = text;
-    msgDiv.className = `message ${type}`;
-    msgDiv.style.display = 'block';
-    setTimeout(() => {
-        if (msgDiv) msgDiv.style.display = 'none';
-    }, 3000);
-}
-
 // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
-
 function switchTab(tableName) {
-    currentActiveTable = tableName;
+    const consultationForm = document.getElementById('consultationForm');
+    const dutyForm = document.getElementById('dutyRoomForm');
 
-    // Обновляем активную кнопку
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if (btn.dataset.table === tableName) {
             btn.classList.add('active');
@@ -97,10 +100,6 @@ function switchTab(tableName) {
             btn.classList.remove('active');
         }
     });
-
-    // Показываем нужную форму
-    const consultationForm = document.getElementById('consultationForm');
-    const dutyForm = document.getElementById('dutyRoomForm');
 
     if (tableName === 'Consultation_scenario') {
         consultationForm.style.display = 'block';
@@ -111,16 +110,36 @@ function switchTab(tableName) {
     }
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ ==========
+// ========== ЗАГРУЗКА ДАННЫХ (с кэшем и спиннером) ==========
+async function loadAllData(forceRefresh = false) {
+    if (isLoading) return;
 
-async function loadAllData() {
-    document.getElementById('tableBody').innerHTML = '<tr><td colspan="4">Загрузка...<\/td><\/tr>';
+    const now = Date.now();
+    if (!forceRefresh && cachedData && (now - lastLoadTime) < CACHE_TTL) {
+        console.log('📦 Использую кэш');
+        allRecords = cachedData;
+        applyFilters();
+        return;
+    }
+
+    isLoading = true;
+    const tbody = document.getElementById('tableBody');
+    const spinner = document.getElementById('loadingSpinner');
+
+    // Показываем спиннер
+    if (spinner) spinner.style.display = 'flex';
+    if (tbody) tbody.style.opacity = '0.3';
 
     try {
+        const startTime = performance.now();
+
         const [consData, dutyData] = await Promise.all([
-            sb.from('Consultation_scenario').select('*'),
-            sb.from('duty_room').select('*')
+            sb.from('Consultation_scenario').select('*').order('created_at', { ascending: false }).limit(500),
+            sb.from('duty_room').select('*').order('created_at', { ascending: false }).limit(500)
         ]);
+
+        const endTime = performance.now();
+        console.log(`⚡ Загрузка заняла ${(endTime - startTime).toFixed(0)} мс`);
 
         allRecords = [];
 
@@ -130,10 +149,8 @@ async function loadAllData() {
                 source: 'consultation',
                 sourceName: 'Сценарии консультаций',
                 displayDate: r.created_at?.split('T')[0] || '',
-                data: {
-                    link: r.link,
-                    comment: r.comment
-                }
+                link: r.link,
+                comment: r.comment
             })));
         }
 
@@ -143,53 +160,55 @@ async function loadAllData() {
                 source: 'duty',
                 sourceName: 'Duty room',
                 displayDate: r.period_from || r.created_at?.split('T')[0] || '',
-                data: {
-                    period_from: r.period_from,
-                    period_to: r.period_to,
-                    period: r.period,
-                    quantity: r.quantity,
-                    measures: r.measures
-                }
+                period_from: r.period_from,
+                period_to: r.period_to,
+                period: r.period,
+                quantity: r.quantity,
+                measures: r.measures
             })));
         }
 
+        // Сохраняем в кэш
+        cachedData = allRecords;
+        lastLoadTime = now;
+
         applyFilters();
+
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        document.getElementById('tableBody').innerHTML = '<tr><td colspan="4" style="color: red;">Ошибка загрузки<\/td><\/tr>';
+        console.error('❌ Ошибка загрузки:', error);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="color: red;">Ошибка загрузки данных<\/td><\/tr>';
+    } finally {
+        if (spinner) spinner.style.display = 'none';
+        if (tbody) tbody.style.opacity = '1';
+        isLoading = false;
     }
 }
 
 // ========== ФИЛЬТРАЦИЯ ==========
-
 function applyFilters() {
     let filtered = [...allRecords];
 
-    // Фильтр по таблице
     if (currentFilters.table !== 'all') {
         filtered = filtered.filter(r => r.source === currentFilters.table);
     }
 
-    // Фильтр по дате (ОТ)
     if (currentFilters.dateFrom) {
         filtered = filtered.filter(r => r.displayDate >= currentFilters.dateFrom);
     }
 
-    // Фильтр по дате (ДО)
     if (currentFilters.dateTo) {
         filtered = filtered.filter(r => r.displayDate <= currentFilters.dateTo);
     }
 
-    // Фильтр по тексту
     if (currentFilters.text) {
         const searchText = currentFilters.text.toLowerCase();
         filtered = filtered.filter(r => {
             if (r.source === 'consultation') {
-                return r.data.link?.toLowerCase().includes(searchText) ||
-                       r.data.comment?.toLowerCase().includes(searchText);
+                return (r.link?.toLowerCase().includes(searchText) ||
+                       r.comment?.toLowerCase().includes(searchText));
             } else {
-                return r.data.period?.toLowerCase().includes(searchText) ||
-                       JSON.stringify(r.data.measures).toLowerCase().includes(searchText);
+                return (r.period?.toLowerCase().includes(searchText) ||
+                       JSON.stringify(r.measures).toLowerCase().includes(searchText));
             }
         });
     }
@@ -206,7 +225,6 @@ function renderTable() {
         return;
     }
 
-    // Сортируем по дате (новые сверху)
     filteredRecords.sort((a, b) => (b.displayDate || '').localeCompare(a.displayDate || ''));
 
     tbody.innerHTML = filteredRecords.map((record, index) => {
@@ -216,14 +234,14 @@ function renderTable() {
 
         if (record.source === 'consultation') {
             dataHtml = `
-                🔗 <a href="${record.data.link}" target="_blank">${record.data.link}</a><br>
-                💬 Комментарий: ${record.data.comment || '—'}
+                🔗 <a href="${record.link}" target="_blank">${record.link.substring(0, 80)}${record.link.length > 80 ? '...' : ''}</a><br>
+                💬 Комментарий: ${record.comment || '—'}
             `;
         } else {
             let measuresHtml = '';
-            if (record.data.measures && record.data.measures.length > 0) {
+            if (record.measures && record.measures.length > 0) {
                 measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
-                    record.data.measures.map(m => {
+                    record.measures.map(m => {
                         switch(m.type) {
                             case 'new_type': return `<li>🆕 Новый вид: ${m.value}</li>`;
                             case 'new_solution': return `<li>💡 Новое решение: ${m.value}</li>`;
@@ -236,8 +254,8 @@ function renderTable() {
             }
 
             dataHtml = `
-                📅 Период: ${record.data.period_from && record.data.period_to ? `${record.data.period_from} — ${record.data.period_to}` : record.data.period}<br>
-                🔢 Количество: ${record.data.quantity}<br>
+                📅 Период: ${record.period_from && record.period_to ? `${record.period_from} — ${record.period_to}` : record.period}<br>
+                🔢 Количество: ${record.quantity}<br>
                 📋 Меры: ${measuresHtml || '—'}
             `;
         }
@@ -250,22 +268,18 @@ function renderTable() {
                 <td>
                     <button class="edit-btn" onclick="editRecord(${record.id}, '${record.source}')">✏️</button>
                     <button class="delete-btn" onclick="deleteRecord(${record.id}, '${record.source}')">🗑️</button>
-                 </td>
+                </td>
             </tr>
         `;
     }).join('');
 }
 
-// ========== CRUD ОПЕРАЦИИ ==========
-
+// ========== CRUD ==========
 async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
-    if (error) {
-        showMessage(`❌ Ошибка: ${error.message}`, 'error');
-        return false;
-    }
+    if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadAllData();
+    loadAllData(true); // force refresh
     return true;
 }
 
@@ -282,12 +296,9 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
         created_at: new Date().toISOString()
     }]);
 
-    if (error) {
-        showMessage(`❌ Ошибка: ${error.message}`, 'error');
-        return false;
-    }
+    if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Запись в дежурку добавлена!', 'success');
-    loadAllData();
+    loadAllData(true);
     return true;
 }
 
@@ -296,49 +307,66 @@ window.deleteRecord = async function(id, source) {
     const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
     const { error } = await sb.from(tableName).delete().eq('id', id);
     if (error) {
-        showMessage(`❌ Ошибка: ${error.message}`, 'error');
+        showMessage(`❌ ${error.message}`, 'error');
     } else {
         showMessage('✅ Удалено', 'success');
-        loadAllData();
+        loadAllData(true);
     }
 };
 
 window.editRecord = async function(id, source) {
     const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
     const { data, error } = await sb.from(tableName).select('*').eq('id', id).single();
-    if (error) {
-        showMessage('Ошибка загрузки', 'error');
-        return;
-    }
+    if (error) { showMessage('Ошибка загрузки', 'error'); return; }
+
+    const oldModal = document.querySelector('.modal');
+    if (oldModal) oldModal.remove();
 
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.style.display = 'flex';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1001;';
 
     if (source === 'duty') {
         modal.innerHTML = `
-            <div style="background: white; padding: 30px; border-radius: 15px; width: 500px; max-width: 90%;">
-                <h3>Редактировать запись #${id}</h3>
-                <input type="date" id="editPeriodFrom" value="${data.period_from || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-                <input type="date" id="editPeriodTo" value="${data.period_to || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-                <input type="number" id="editQuantity" value="${data.quantity || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-                <textarea id="editMeasures" rows="5" style="width: 100%; margin-bottom: 10px; padding: 8px;">${JSON.stringify(data.measures || [], null, 2)}</textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button id="saveEditBtn" style="padding: 10px 20px;">💾 Сохранить</button>
-                    <button id="cancelEditBtn" style="padding: 10px 20px;">❌ Отмена</button>
+            <div>
+                <h3>✏️ Редактировать запись #${id}</h3>
+                <div class="form-group">
+                    <label>Период (от)</label>
+                    <input type="date" id="editPeriodFrom" value="${data.period_from || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Период (до)</label>
+                    <input type="date" id="editPeriodTo" value="${data.period_to || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Количество</label>
+                    <input type="number" id="editQuantity" value="${data.quantity || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Меры (JSON)</label>
+                    <textarea id="editMeasures" rows="5">${JSON.stringify(data.measures || [], null, 2)}</textarea>
+                    <small style="color: #666;">Формат: [{"type":"new_type","value":"значение"}, ...]</small>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="saveEditBtn" class="btn btn-primary">💾 Сохранить</button>
+                    <button id="cancelEditBtn" class="btn btn-secondary">❌ Отмена</button>
                 </div>
             </div>
         `;
     } else {
         modal.innerHTML = `
-            <div style="background: white; padding: 30px; border-radius: 15px; width: 500px; max-width: 90%;">
-                <h3>Редактировать запись #${id}</h3>
-                <input type="url" id="editLink" value="${data.link || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
-                <textarea id="editComment" rows="3" style="width: 100%; margin-bottom: 10px; padding: 8px;">${data.comment || ''}</textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button id="saveEditBtn" style="padding: 10px 20px;">💾 Сохранить</button>
-                    <button id="cancelEditBtn" style="padding: 10px 20px;">❌ Отмена</button>
+            <div>
+                <h3>✏️ Редактировать запись #${id}</h3>
+                <div class="form-group">
+                    <label>Ссылка</label>
+                    <input type="url" id="editLink" value="${data.link || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Комментарий</label>
+                    <textarea id="editComment" rows="3">${data.comment || ''}</textarea>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="saveEditBtn" class="btn btn-primary">💾 Сохранить</button>
+                    <button id="cancelEditBtn" class="btn btn-secondary">❌ Отмена</button>
                 </div>
             </div>
         `;
@@ -350,9 +378,9 @@ window.editRecord = async function(id, source) {
         if (source === 'duty') {
             let measuresVal = null;
             try {
-                const measuresInput = document.getElementById('editMeasures').value;
-                if (measuresInput) measuresVal = JSON.parse(measuresInput);
-            } catch(e) { measuresVal = null; }
+                const val = document.getElementById('editMeasures').value;
+                if (val) measuresVal = JSON.parse(val);
+            } catch(e) { measuresVal = []; }
 
             const updates = {
                 period_from: document.getElementById('editPeriodFrom').value,
@@ -361,41 +389,33 @@ window.editRecord = async function(id, source) {
                 measures: measuresVal
             };
             updates.period = `${updates.period_from} — ${updates.period_to}`;
-
-            const { error } = await sb.from('duty_room').update(updates).eq('id', id);
-            if (error) showMessage(`Ошибка: ${error.message}`, 'error');
-            else showMessage('✅ Обновлено', 'success');
+            await sb.from('duty_room').update(updates).eq('id', id);
         } else {
             const updates = {
                 link: document.getElementById('editLink').value,
                 comment: document.getElementById('editComment').value || null
             };
-            const { error } = await sb.from('Consultation_scenario').update(updates).eq('id', id);
-            if (error) showMessage(`Ошибка: ${error.message}`, 'error');
-            else showMessage('✅ Обновлено', 'success');
+            await sb.from('Consultation_scenario').update(updates).eq('id', id);
         }
+        showMessage('✅ Обновлено', 'success');
         modal.remove();
-        loadAllData();
+        loadAllData(true);
     };
 
     document.getElementById('cancelEditBtn').onclick = () => modal.remove();
 };
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-
 document.addEventListener('DOMContentLoaded', () => {
     // Вкладки
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            switchTab(btn.dataset.table);
-        });
+        btn.addEventListener('click', () => switchTab(btn.dataset.table));
     });
 
     // Фильтр иконка
-    const filterIcon = document.getElementById('filterIcon');
-    const filterPanel = document.getElementById('filterPanel');
-    filterIcon?.addEventListener('click', () => {
-        filterPanel.style.display = filterPanel.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('filterIcon').addEventListener('click', () => {
+        const panel = document.getElementById('filterPanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
     });
 
     // Элементы фильтров
@@ -428,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFilters();
     });
 
-    // Кнопки добавления мер
+    // Меры
     document.getElementById('addNewTypeBtn')?.addEventListener('click', () => addMeasureByType('new-type'));
     document.getElementById('addNewSolutionBtn')?.addEventListener('click', () => addMeasureByType('new-solution'));
     document.getElementById('addTaskBtn')?.addEventListener('click', () => addMeasureByType('task'));
@@ -449,27 +469,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const periodFrom = document.getElementById('dutyPeriodFrom').value;
         const periodTo = document.getElementById('dutyPeriodTo').value;
         const quantity = document.getElementById('dutyQuantity').value;
-        const measuresArray = collectMeasures();
+        const measures = collectMeasures();
 
-        if (!periodFrom || !periodTo) {
-            showMessage('❌ Выберите период', 'error');
-            return;
-        }
-        if (!quantity) {
-            showMessage('❌ Введите количество', 'error');
-            return;
-        }
+        if (!periodFrom || !periodTo) { showMessage('❌ Выберите период', 'error'); return; }
+        if (!quantity) { showMessage('❌ Введите количество', 'error'); return; }
 
-        await addDutyRecord(periodFrom, periodTo, quantity, measuresArray);
+        await addDutyRecord(periodFrom, periodTo, quantity, measures);
 
         document.getElementById('dutyPeriodFrom').value = '';
         document.getElementById('dutyPeriodTo').value = '';
         document.getElementById('dutyQuantity').value = '';
-        const container = document.getElementById('measuresContainer');
-        if (container) container.innerHTML = '';
+        document.getElementById('measuresContainer').innerHTML = '';
     });
 
     // Загружаем данные
-    switchTab('Consultation_scenario');
     loadAllData();
 });
