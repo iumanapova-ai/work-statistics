@@ -459,3 +459,22 @@ h3 {
     border-radius: 8px;
     cursor: pointer;
 }
+/* Кнопки экспорта */
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+/* Чекбоксы */
+.records-table td:first-child,
+.records-table th:first-child {
+    text-align: center;
+}
+
+.select-all-wrapper {
+    margin-left: 10px;
+}
