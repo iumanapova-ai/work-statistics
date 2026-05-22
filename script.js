@@ -123,30 +123,30 @@ async function loadAllData(forceRefresh = false) {
     }
 
     isLoading = true;
-    const tbody = document.getElementById('tableBody');
     const spinner = document.getElementById('loadingSpinner');
-
     if (spinner) spinner.style.display = 'flex';
-    if (tbody) tbody.style.opacity = '0.3';
 
     try {
         const startTime = performance.now();
 
-        // Загружаем данные из обеих таблиц
-        const consultationPromise = sb.from('Consultation_scenario').select('*');
-        const dutyPromise = sb.from('duty_room').select('*');
-
-        const [consResponse, dutyResponse] = await Promise.all([consultationPromise, dutyPromise]);
-
-        console.log('Консультации:', consResponse);
-        console.log('Дежурка:', dutyResponse);
+        // Загружаем только последние 100 записей из каждой таблицы
+        // и только нужные поля (не все *)
+        const [consResponse, dutyResponse] = await Promise.all([
+            sb.from('Consultation_scenario')
+                .select('id,created_at,link,comment')
+                .order('created_at', { ascending: false })
+                .limit(100),
+            sb.from('duty_room')
+                .select('id,created_at,period_from,period_to,period,quantity,measures')
+                .order('created_at', { ascending: false })
+                .limit(100)
+        ]);
 
         const endTime = performance.now();
         console.log(`⚡ Загрузка заняла ${(endTime - startTime).toFixed(0)} мс`);
 
         allRecords = [];
 
-        // Добавляем консультации
         if (consResponse.data && consResponse.data.length > 0) {
             allRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
@@ -156,11 +156,8 @@ async function loadAllData(forceRefresh = false) {
                 link: r.link,
                 comment: r.comment
             })));
-        } else if (consResponse.error) {
-            console.error('Ошибка загрузки консультаций:', consResponse.error);
         }
 
-        // Добавляем дежурку
         if (dutyResponse.data && dutyResponse.data.length > 0) {
             allRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
@@ -173,8 +170,6 @@ async function loadAllData(forceRefresh = false) {
                 quantity: r.quantity,
                 measures: r.measures
             })));
-        } else if (dutyResponse.error) {
-            console.error('Ошибка загрузки дежурки:', dutyResponse.error);
         }
 
         console.log('Всего записей:', allRecords.length);
@@ -186,10 +181,10 @@ async function loadAllData(forceRefresh = false) {
 
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Ошибка загрузки данных: ${error.message}<\/td><\/tr>`;
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Ошибка загрузки: ${error.message}<\/td><\/tr>`;
     } finally {
         if (spinner) spinner.style.display = 'none';
-        if (tbody) tbody.style.opacity = '1';
         isLoading = false;
     }
 }
