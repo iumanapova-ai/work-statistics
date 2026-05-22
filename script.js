@@ -1,20 +1,26 @@
-// script.js
+// Создаём клиент Supabase (используем переменные из config.js)
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+console.log('Страница загружена, Supabase готов');
+
 // Функция показа сообщений
 function showMessage(text, type) {
     const msgDiv = document.getElementById('message');
+    if (!msgDiv) return;
     msgDiv.textContent = text;
     msgDiv.className = `message ${type}`;
     msgDiv.style.display = 'block';
 
     setTimeout(() => {
-        msgDiv.style.display = 'none';
+        if (msgDiv) msgDiv.style.display = 'none';
     }, 3000);
 }
 
-// Загрузка и отображение всех записей
+// Загрузка всех записей
 async function loadRecords() {
     const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+
     tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>';
 
     const { data, error } = await supabase
@@ -24,7 +30,7 @@ async function loadRecords() {
 
     if (error) {
         console.error('Ошибка загрузки:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Ошибка загрузки данных</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Ошибка загрузки данных: ' + error.message + '</td></tr>';
         return;
     }
 
@@ -43,36 +49,30 @@ async function loadRecords() {
     `).join('');
 }
 
-// Добавление новой записи
+// Добавление записи
 async function addRecord(date, link, comment) {
     const { data, error } = await supabase
         .from('Consultation_scenario')
-        .insert([
-            {
-                date: date,
-                link: link,
-                comment: comment || null
-            }
-        ]);
+        .insert([{ date: date, link: link, comment: comment || null }]);
 
     if (error) {
         console.error('Ошибка:', error);
         if (error.code === '23505') {
-            showMessage('❌ Ошибка: Такая ссылка уже существует!', 'error');
+            showMessage('❌ Такая ссылка уже существует!', 'error');
         } else {
-            showMessage('❌ Ошибка при сохранении: ' + error.message, 'error');
+            showMessage('❌ Ошибка: ' + error.message, 'error');
         }
         return false;
     }
 
-    showMessage('✅ Запись успешно добавлена!', 'success');
-    loadRecords(); // Перезагружаем список
+    showMessage('✅ Запись добавлена!', 'success');
+    loadRecords();
     return true;
 }
 
 // Удаление записи
-async function deleteRecord(id) {
-    if (!confirm('Удалить эту запись?')) return;
+window.deleteRecord = async function(id) {
+    if (!confirm('Удалить запись?')) return;
 
     const { error } = await supabase
         .from('Consultation_scenario')
@@ -80,48 +80,52 @@ async function deleteRecord(id) {
         .eq('id', id);
 
     if (error) {
-        showMessage('❌ Ошибка при удалении: ' + error.message, 'error');
+        showMessage('❌ Ошибка удаления: ' + error.message, 'error');
     } else {
         showMessage('✅ Запись удалена', 'success');
         loadRecords();
     }
-}
+};
 
 // Обработка формы
-document.getElementById('consultationForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+const form = document.getElementById('consultationForm');
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const date = document.getElementById('date').value;
-    const link = document.getElementById('link').value.trim();
-    const comment = document.getElementById('comment').value.trim();
+        const dateInput = document.getElementById('date');
+        const linkInput = document.getElementById('link');
+        const commentInput = document.getElementById('comment');
 
-    // Простая проверка на "дурака"
-    if (!date) {
-        showMessage('❌ Укажите дату и время', 'error');
-        return;
-    }
+        const date = dateInput ? dateInput.value : '';
+        const link = linkInput ? linkInput.value.trim() : '';
+        const comment = commentInput ? commentInput.value.trim() : '';
 
-    if (!link) {
-        showMessage('❌ Введите ссылку на консультацию', 'error');
-        return;
-    }
+        if (!date) {
+            showMessage('❌ Укажите дату', 'error');
+            return;
+        }
 
-    if (!link.startsWith('http://') && !link.startsWith('https://')) {
-        showMessage('❌ Ссылка должна начинаться с http:// или https://', 'error');
-        return;
-    }
+        if (!link) {
+            showMessage('❌ Введите ссылку', 'error');
+            return;
+        }
 
-    // Очищаем форму
-    document.getElementById('consultationForm').reset();
+        if (!link.startsWith('http://') && !link.startsWith('https://')) {
+            showMessage('❌ Ссылка должна начинаться с http:// или https://', 'error');
+            return;
+        }
 
-    // Сохраняем
-    await addRecord(date, link, comment);
-});
+        await addRecord(date, link, comment);
+        if (form) form.reset();
+    });
+}
 
 // Кнопка обновления
-document.getElementById('refreshBtn').addEventListener('click', () => {
-    loadRecords();
-});
+const refreshBtn = document.getElementById('refreshBtn');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => loadRecords());
+}
 
-// Загружаем записи при открытии страницы
+// Загружаем записи при старте
 loadRecords();
