@@ -21,7 +21,7 @@ body {
     border-radius: 15px;
     padding: 30px;
     margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 h1 {
@@ -86,6 +86,10 @@ button:hover {
     background: #6c757d;
 }
 
+.refresh-btn:hover {
+    background: #5a6268;
+}
+
 .message {
     padding: 12px;
     border-radius: 8px;
@@ -111,7 +115,8 @@ button:hover {
     margin-top: 15px;
 }
 
-.records-table th, .records-table td {
+.records-table th,
+.records-table td {
     padding: 10px;
     text-align: left;
     border-bottom: 1px solid #e0e0e0;

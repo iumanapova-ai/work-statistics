@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Work statistics — Консультации</title>
+    <title>Work statistics — Сценарии консультаций</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:,">
 </head>
 <body>
     <div class="container">
+        <!-- Карточка формы ввода -->
         <div class="card">
             <h1>📊 Сценарии консультаций</h1>
             <div class="subtitle">Добавьте информацию о консультации</div>
@@ -36,6 +37,7 @@
             <div id="message" class="message"></div>
         </div>
 
+        <!-- Карточка со списком записей -->
         <div class="card">
             <h2>📋 Список консультаций</h2>
             <div style="overflow-x: auto;">
@@ -49,7 +51,9 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
+                        <tr>
+                            <td colspan="4" style="text-align: center;">Загрузка...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -60,7 +64,7 @@
         </div>
     </div>
 
-    <!-- ПОДКЛЮЧЕНИЕ В ПРАВИЛЬНОМ ПОРЯДКЕ -->
+    <!-- Скрипты -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="script.js"></script>
