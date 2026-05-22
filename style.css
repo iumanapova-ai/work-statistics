@@ -478,3 +478,200 @@ h3 {
 .select-all-wrapper {
     margin-left: 10px;
 }
+/* ========== ГЛАВНЫЕ ВКЛАДКИ (ТУЛБАР) ========== */
+.main-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 25px;
+    background: #f8f9fa;
+    padding: 5px;
+    border-radius: 12px;
+}
+
+.main-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px;
+}
+
+.main-tab-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.main-tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== ЗАГЛУШКА АВТОРИЗАЦИИ ========== */
+.auth-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.auth-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.auth-placeholder h2 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.auth-placeholder p {
+    color: #666;
+    margin-bottom: 20px;
+}
+/* ========== ШАПКА С АВТОРИЗАЦИЕЙ ========== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.header-title h1 {
+    margin-bottom: 5px;
+}
+
+.auth-panel {
+    background: #f8f9fa;
+    padding: 8px 16px;
+    border-radius: 40px;
+    border: 1px solid #e0e0e0;
+}
+
+.unauth-block {
+    display: flex;
+    align-items: center;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #667eea;
+    color: #667eea;
+    padding: 6px 16px;
+}
+
+.btn-outline:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.auth-block {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-icon {
+    font-size: 20px;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.user-links {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.user-link {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.user-link:hover {
+    text-decoration: underline;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+/* ========== ГЛАВНЫЕ ВКЛАДКИ ========== */
+.main-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 25px;
+    background: #f8f9fa;
+    padding: 5px;
+    border-radius: 12px;
+}
+
+.main-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px;
+}
+
+.main-tab-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.main-tab-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Модальное окно */
+.modal-content {
+    max-width: 400px;
+}
