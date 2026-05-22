@@ -1,105 +1,78 @@
-// script.js
-// Создаём клиент Supabase из переменных, объявленных в config.js
+// Создаём клиент Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('Supabase готов');
+console.log('=== НАЧАЛО РАБОТЫ ===');
+console.log('SUPABASE_URL:', SUPABASE_URL);
+console.log('supabase объект создан:', !!supabase);
 
-function showMessage(text, type) {
-    const msgDiv = document.getElementById('message');
-    if (!msgDiv) return;
-    msgDiv.textContent = text;
-    msgDiv.className = `message ${type}`;
-    msgDiv.style.display = 'block';
-    setTimeout(() => {
-        if (msgDiv) msgDiv.style.display = 'none';
-    }, 3000);
-}
+// Ждём, пока загрузится страница
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('Страница загружена, ищем форму...');
 
-async function loadRecords() {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>';
+    const form = document.getElementById('consultationForm');
 
-    const { data, error } = await supabase
-        .from('Consultation_scenario')
-        .select('*')
-        .order('date', { ascending: false });
-
-    if (error) {
-        console.error('Ошибка загрузки:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Ошибка загрузки: ' + error.message + '</td></tr>';
+    if (!form) {
+        console.error('❌ Форма с id="consultationForm" не найдена!');
         return;
     }
 
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет записей. Добавьте первую!</td></tr>';
-        return;
-    }
+    console.log('✅ Форма найдена, привязываю обработчик...');
 
-    tbody.innerHTML = data.map(record => `
-        <tr>
-            <td>${new Date(record.date).toLocaleString('ru-RU')}</td>
-            <td><a href="${record.link}" target="_blank">${record.link.substring(0, 50)}${record.link.length > 50 ? '...' : ''}</a></td>
-            <td>${record.comment || '—'}</td>
-            <td><button class="delete-btn" onclick="deleteRecord(${record.id})">Удалить</button></td>
-        </tr>
-    `).join('');
-}
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        console.log('=== ФОРМА ОТПРАВЛЕНА ===');
 
-async function addRecord(date, link, comment) {
-    const { data, error } = await supabase
-        .from('Consultation_scenario')
-        .insert([{ date: date, link: link, comment: comment || null }]);
+        // Получаем данные из полей
+        const dateInput = document.getElementById('date');
+        const linkInput = document.getElementById('link');
+        const commentInput = document.getElementById('comment');
 
-    if (error) {
-        console.error('Ошибка:', error);
-        if (error.code === '23505') {
-            showMessage('❌ Такая ссылка уже существует!', 'error');
-        } else {
-            showMessage('❌ Ошибка: ' + error.message, 'error');
-        }
-        return false;
-    }
+        const date = dateInput ? dateInput.value : null;
+        const link = linkInput ? linkInput.value : null;
+        const comment = commentInput ? commentInput.value : null;
 
-    showMessage('✅ Запись добавлена!', 'success');
-    loadRecords();
-    return true;
-}
+        console.log('Дата:', date);
+        console.log('Ссылка:', link);
+        console.log('Комментарий:', comment);
 
-window.deleteRecord = async function(id) {
-    if (!confirm('Удалить запись?')) return;
-    const { error } = await supabase.from('Consultation_scenario').delete().eq('id', id);
-    if (error) {
-        showMessage('❌ Ошибка удаления: ' + error.message, 'error');
-    } else {
-        showMessage('✅ Запись удалена', 'success');
-        loadRecords();
-    }
-};
-
-const form = document.getElementById('consultationForm');
-if (form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const date = document.getElementById('date').value;
-        const link = document.getElementById('link').value.trim();
-        const comment = document.getElementById('comment').value.trim();
-
-        if (!date) { showMessage('❌ Укажите дату', 'error'); return; }
-        if (!link) { showMessage('❌ Введите ссылку', 'error'); return; }
-        if (!link.startsWith('http://') && !link.startsWith('https://')) {
-            showMessage('❌ Ссылка должна начинаться с http:// или https://', 'error');
+        // Проверяем, что поля заполнены
+        if (!date || !link) {
+            console.error('❌ Не все поля заполнены');
+            alert('Заполните дату и ссылку');
             return;
         }
 
-        await addRecord(date, link, comment);
-        form.reset();
+        // Пробуем отправить в Supabase
+        console.log('🟢 Отправляю запрос в Supabase...');
+
+        try {
+            const { data, error } = await supabase
+                .from('Consultation_scenario')
+                .insert([
+                    {
+                        date: date,
+                        link: link,
+                        comment: comment || null
+                    }
+                ]);
+
+            if (error) {
+                console.error('🔴 Ошибка от Supabase:', error);
+                alert('Ошибка: ' + error.message);
+            } else {
+                console.log('🟢 Успешно! Данные:', data);
+                alert('Запись добавлена!');
+                form.reset();
+                // Перезагружаем список
+                if (typeof loadRecords === 'function') {
+                    loadRecords();
+                }
+            }
+        } catch (err) {
+            console.error('🔴 Исключение:', err);
+            alert('Ошибка при отправке: ' + err.message);
+        }
     });
-}
 
-const refreshBtn = document.getElementById('refreshBtn');
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => loadRecords());
-}
-
-loadRecords();
+    console.log('✅ Обработчик привязан, форма готова');
+});
