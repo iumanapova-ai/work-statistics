@@ -4,9 +4,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allRecords = [];
 let filteredRecords = [];
 let isLoading = false;
-let cachedData = null;
-let lastLoadTime = 0;
-const CACHE_TTL = 30000; // 30 секунд
 
 let currentFilters = {
     dateFrom: '',
@@ -110,17 +107,9 @@ function switchTab(tableName) {
     }
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ (БЕЗ LIMIT И order В ОДНОМ) ==========
-async function loadAllData(forceRefresh = false) {
+// ========== ЗАГРУЗКА ДАННЫХ ==========
+async function loadAllData() {
     if (isLoading) return;
-
-    const now = Date.now();
-    if (!forceRefresh && cachedData && (now - lastLoadTime) < CACHE_TTL) {
-        console.log('📦 Использую кэш');
-        allRecords = cachedData;
-        applyFilters();
-        return;
-    }
 
     isLoading = true;
     const spinner = document.getElementById('loadingSpinner');
@@ -129,17 +118,10 @@ async function loadAllData(forceRefresh = false) {
     try {
         const startTime = performance.now();
 
-        // Загружаем только последние 100 записей из каждой таблицы
-        // и только нужные поля (не все *)
+        // Загружаем ВСЕ записи без лимита
         const [consResponse, dutyResponse] = await Promise.all([
-            sb.from('Consultation_scenario')
-                .select('id,created_at,link,comment')
-                .order('created_at', { ascending: false })
-                .limit(100),
-            sb.from('duty_room')
-                .select('id,created_at,period_from,period_to,period,quantity,measures')
-                .order('created_at', { ascending: false })
-                .limit(100)
+            sb.from('Consultation_scenario').select('*'),
+            sb.from('duty_room').select('*')
         ]);
 
         const endTime = performance.now();
@@ -147,6 +129,7 @@ async function loadAllData(forceRefresh = false) {
 
         allRecords = [];
 
+        // Добавляем консультации
         if (consResponse.data && consResponse.data.length > 0) {
             allRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
@@ -156,33 +139,33 @@ async function loadAllData(forceRefresh = false) {
                 link: r.link,
                 comment: r.comment
             })));
+            console.log(`📋 Загружено консультаций: ${consResponse.data.length}`);
         }
 
+        // Добавляем дежурку
         if (dutyResponse.data && dutyResponse.data.length > 0) {
             allRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
                 source: 'duty',
                 sourceName: 'Duty room',
-                displayDate: r.period_from || r.created_at?.split('T')[0] || '',
+                displayDate: r.period_from || '',
                 period_from: r.period_from,
                 period_to: r.period_to,
                 period: r.period,
                 quantity: r.quantity,
                 measures: r.measures
             })));
+            console.log(`🚪 Загружено дежурок: ${dutyResponse.data.length}`);
         }
 
-        console.log('Всего записей:', allRecords.length);
-
-        cachedData = allRecords;
-        lastLoadTime = now;
+        console.log(`📊 Всего записей: ${allRecords.length}`);
 
         applyFilters();
 
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
         const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Ошибка загрузки: ${error.message}<\/td><\/tr>`;
+        if (tbody) tbody.innerHTML = `<td><td colspan="4" style="color: red;">Ошибка загрузки: ${error.message}<\/td><\/tr>`;
     } finally {
         if (spinner) spinner.style.display = 'none';
         isLoading = false;
@@ -285,7 +268,7 @@ async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadAllData(true);
+    loadAllData();
     return true;
 }
 
@@ -298,13 +281,12 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
         period_to: periodTo,
         period: periodText,
         quantity: parseInt(quantity),
-        measures: cleanMeasures,
-        created_at: new Date().toISOString()
+        measures: cleanMeasures
     }]);
 
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Запись в дежурку добавлена!', 'success');
-    loadAllData(true);
+    loadAllData();
     return true;
 }
 
@@ -316,7 +298,7 @@ window.deleteRecord = async function(id, source) {
         showMessage(`❌ ${error.message}`, 'error');
     } else {
         showMessage('✅ Удалено', 'success');
-        loadAllData(true);
+        loadAllData();
     }
 };
 
@@ -350,7 +332,6 @@ window.editRecord = async function(id, source) {
                 <div class="form-group">
                     <label>Меры (JSON)</label>
                     <textarea id="editMeasures" rows="5">${JSON.stringify(data.measures || [], null, 2)}</textarea>
-                    <small style="color: #666;">Формат: [{"type":"new_type","value":"значение"}, ...]</small>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button id="saveEditBtn" class="btn btn-primary">💾 Сохранить</button>
@@ -405,7 +386,7 @@ window.editRecord = async function(id, source) {
         }
         showMessage('✅ Обновлено', 'success');
         modal.remove();
-        loadAllData(true);
+        loadAllData();
     };
 
     document.getElementById('cancelEditBtn').onclick = () => modal.remove();

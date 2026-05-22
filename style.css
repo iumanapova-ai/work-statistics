@@ -48,7 +48,6 @@ h3 {
     font-size: 14px;
 }
 
-/* ========== ВКЛАДКИ ========== */
 .tabs {
     display: flex;
     gap: 5px;
@@ -79,7 +78,6 @@ h3 {
     background: rgba(102, 126, 234, 0.1);
 }
 
-/* ========== ФОРМЫ ========== */
 .form-group {
     margin-bottom: 20px;
 }
@@ -144,7 +142,6 @@ h3 {
     flex: 3;
 }
 
-/* ========== КНОПКИ ========== */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -186,7 +183,6 @@ h3 {
     background: #138496;
 }
 
-/* ========== СООБЩЕНИЯ ========== */
 .message {
     position: fixed;
     bottom: 20px;
@@ -210,13 +206,11 @@ h3 {
     border-left: 4px solid #dc3545;
 }
 
-/* ========== ОБЁРТКА ТАБЛИЦЫ ДЛЯ СПИННЕРА ========== */
 .table-wrapper {
     position: relative;
     min-height: 300px;
 }
 
-/* ========== СПИННЕР (РОМАШКА) - ПЕРЕКРЫВАЕТ ТАБЛИЦУ ========== */
 .spinner-container {
     position: absolute;
     top: 0;
@@ -254,7 +248,6 @@ h3 {
     font-size: 14px;
 }
 
-/* ========== ТАБЛИЦА ========== */
 .records-table {
     width: 100%;
     border-collapse: collapse;
@@ -284,7 +277,6 @@ h3 {
     text-decoration: underline;
 }
 
-/* ========== ФИЛЬТР ========== */
 .filter-icon {
     width: 40px;
     height: 40px;
@@ -347,7 +339,6 @@ h3 {
     border-color: #667eea;
 }
 
-/* ========== БЭЙДЖИ ИСТОЧНИКОВ ========== */
 .source-badge {
     display: inline-block;
     padding: 4px 8px;
@@ -366,7 +357,6 @@ h3 {
     color: #f57c00;
 }
 
-/* ========== КНОПКИ ДЕЙСТВИЙ ========== */
 .edit-btn {
     background: #ffc107;
     color: #333;
@@ -398,7 +388,6 @@ h3 {
     transform: none;
 }
 
-/* ========== КАРТОЧКИ МЕР ========== */
 .measure-card {
     background: white;
     padding: 15px;
@@ -434,7 +423,6 @@ h3 {
     background: #c82333;
 }
 
-/* ========== МОДАЛЬНОЕ ОКНО ========== */
 .modal {
     position: fixed;
     top: 0;
@@ -470,9 +458,4 @@ h3 {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-}
-
-.modal .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
 }
