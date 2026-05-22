@@ -9,7 +9,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Панель управления -->
         <div class="card">
             <h1>📊 Управление консультациями и дежурством</h1>
             <p class="subtitle">Работа с несколькими таблицами</p>
@@ -58,14 +57,18 @@
                 <div class="form-group">
                     <label>📋 Меры (можно добавить несколько)</label>
                     <div id="measuresContainer"></div>
-                    <button type="button" id="addMeasureBlockBtn" class="btn btn-add-measure" style="margin-top: 10px;">+ Добавить меру</button>
-                    <small class="hint">Каждая мера включает: Новый вид, Новое решение, ссылку на задачу и ссылку на ошибку</small>
+                    <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                        <button type="button" id="addNewTypeBtn" class="btn btn-measure">➕ Новый вид</button>
+                        <button type="button" id="addNewSolutionBtn" class="btn btn-measure">➕ Новое решение</button>
+                        <button type="button" id="addTaskBtn" class="btn btn-measure">➕ Задача</button>
+                        <button type="button" id="addErrorBtn" class="btn btn-measure">➕ Ошибка</button>
+                    </div>
+                    <small class="hint">Каждая мера добавляется отдельной кнопкой</small>
                 </div>
 
                 <button id="addDutyBtn" class="btn btn-primary">➕ Добавить в дежурку</button>
             </div>
 
-            <!-- Кнопки действий -->
             <div class="button-group">
                 <button id="refreshBtn" class="btn btn-secondary">🔄 Обновить</button>
                 <button id="combinedReportBtn" class="btn btn-success">📊 Общий список</button>
@@ -76,13 +79,12 @@
         <div id="periodFilterBlock" style="display: none;" class="card">
             <h3>📅 Фильтр по периодам</h3>
             <div class="form-row">
-                <input type="text" id="filterPeriod" placeholder="Поиск по периоду (например: 2024-01)" class="flex-1">
+                <input type="text" id="filterPeriod" placeholder="Поиск по периоду" class="flex-1">
                 <button id="applyFilterBtn" class="btn btn-secondary">🔍 Найти</button>
                 <button id="clearFilterBtn" class="btn btn-secondary">❌ Сбросить</button>
             </div>
         </div>
 
-        <!-- Таблица с данными -->
         <div class="card">
             <h2 id="currentTableTitle">📋 Сценарии консультаций</h2>
             <div style="overflow-x: auto;">

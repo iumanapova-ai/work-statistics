@@ -22,24 +22,47 @@ function showMessage(text, type) {
 
 // ========== РАБОТА С МЕРАМИ ==========
 
-function addMeasureBlock(measureData = null) {
+function addMeasureByType(type) {
     const container = document.getElementById('measuresContainer');
     if (!container) return;
 
     const blockDiv = document.createElement('div');
-    blockDiv.className = 'measure-card';
+    blockDiv.className = `measure-card measure-${type}`;
+    blockDiv.style.cssText = 'background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e0e0e0;';
+
+    let title = '', placeholder = '', inputType = 'text';
+
+    switch(type) {
+        case 'new-type':
+            title = '🆕 Новый вид';
+            placeholder = 'Введите новый вид';
+            inputType = 'text';
+            break;
+        case 'new-solution':
+            title = '💡 Новое решение';
+            placeholder = 'Введите новое решение';
+            inputType = 'text';
+            break;
+        case 'task':
+            title = '🚀 Задача в разработку';
+            placeholder = 'Ссылка на задачу';
+            inputType = 'url';
+            break;
+        case 'error':
+            title = '⚠️ Ошибка';
+            placeholder = 'Ссылка на ошибку';
+            inputType = 'url';
+            break;
+        default:
+            return;
+    }
 
     blockDiv.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <strong>📌 Мера</strong>
+            <strong>${title}</strong>
             <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.closest('.measure-card').remove()">✖️ Удалить</button>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <input type="text" class="measure-new-type" placeholder="Новый вид" style="flex: 1; min-width: 150px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.new_type || ''}">
-            <input type="text" class="measure-new-solution" placeholder="Новое решение" style="flex: 1; min-width: 150px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.new_solution || ''}">
-            <input type="url" class="measure-task-link" placeholder="Задача в разработку (ссылка)" style="flex: 1; min-width: 200px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.task_link || ''}">
-            <input type="url" class="measure-error-link" placeholder="Ошибка (ссылка)" style="flex: 1; min-width: 200px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.error_link || ''}">
-        </div>
+        <input type="${inputType}" class="measure-value" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
     `;
 
     container.appendChild(blockDiv);
@@ -47,21 +70,22 @@ function addMeasureBlock(measureData = null) {
 
 function collectMeasures() {
     const measures = [];
-    document.querySelectorAll('#measuresContainer .measure-card').forEach(card => {
-        const new_type = card.querySelector('.measure-new-type')?.value;
-        const new_solution = card.querySelector('.measure-new-solution')?.value;
-        const task_link = card.querySelector('.measure-task-link')?.value;
-        const error_link = card.querySelector('.measure-error-link')?.value;
 
-        if (new_type || new_solution || task_link || error_link) {
-            measures.push({
-                new_type: new_type || '',
-                new_solution: new_solution || '',
-                task_link: task_link || '',
-                error_link: error_link || ''
-            });
+    document.querySelectorAll('#measuresContainer .measure-card').forEach(card => {
+        const value = card.querySelector('.measure-value')?.value;
+        if (!value) return;
+
+        if (card.classList.contains('measure-new-type')) {
+            measures.push({ type: 'new_type', value: value });
+        } else if (card.classList.contains('measure-new-solution')) {
+            measures.push({ type: 'new_solution', value: value });
+        } else if (card.classList.contains('measure-task')) {
+            measures.push({ type: 'task', value: value });
+        } else if (card.classList.contains('measure-error')) {
+            measures.push({ type: 'error', value: value });
         }
     });
+
     return measures;
 }
 
@@ -109,14 +133,15 @@ async function loadRecords() {
             let measuresHtml = '';
             if (record.measures && record.measures.length > 0) {
                 measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
-                    record.measures.map(m => `
-                        <li>
-                            <strong>Новый вид:</strong> ${m.new_type || '—'}<br>
-                            <strong>Новое решение:</strong> ${m.new_solution || '—'}
-                            ${m.task_link ? `<br>🚀 <a href="${m.task_link}" target="_blank">Задача в разработку</a>` : ''}
-                            ${m.error_link ? `<br>⚠️ <a href="${m.error_link}" target="_blank">Ошибка</a>` : ''}
-                        </li>
-                    `).join('') +
+                    record.measures.map(m => {
+                        switch(m.type) {
+                            case 'new_type': return `<li>🆕 Новый вид: ${m.value}</li>`;
+                            case 'new_solution': return `<li>💡 Новое решение: ${m.value}</li>`;
+                            case 'task': return `<li>🚀 <a href="${m.value}" target="_blank">Задача в разработку</a></li>`;
+                            case 'error': return `<li>⚠️ <a href="${m.value}" target="_blank">Ошибка</a></li>`;
+                            default: return '';
+                        }
+                    }).join('') +
                     '</ul>';
             }
 
@@ -286,7 +311,7 @@ window.editRecord = async function(id) {
 
 async function loadCombinedReport() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<td><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
     document.getElementById('currentTableTitle').innerHTML = '📊 ОБЩИЙ СПИСОК (все таблицы)';
 
     let allRecords = [];
@@ -327,15 +352,11 @@ function clearFilter() {
 
 // Инициализация после загрузки страницы
 document.addEventListener('DOMContentLoaded', () => {
-    // Добавляем первый блок меры
-    if (document.getElementById('measuresContainer')) {
-        addMeasureBlock();
-    }
-
-    // Обработчик добавления меры
-    document.getElementById('addMeasureBlockBtn')?.addEventListener('click', () => {
-        addMeasureBlock();
-    });
+    // Обработчики кнопок добавления мер
+    document.getElementById('addNewTypeBtn')?.addEventListener('click', () => addMeasureByType('new-type'));
+    document.getElementById('addNewSolutionBtn')?.addEventListener('click', () => addMeasureByType('new-solution'));
+    document.getElementById('addTaskBtn')?.addEventListener('click', () => addMeasureByType('task'));
+    document.getElementById('addErrorBtn')?.addEventListener('click', () => addMeasureByType('error'));
 
     // Обработчик добавления консультации
     document.getElementById('addConsultationBtn')?.addEventListener('click', async () => {
@@ -370,10 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('dutyPeriodTo').value = '';
         document.getElementById('dutyQuantity').value = '';
         const container = document.getElementById('measuresContainer');
-        if (container) {
-            container.innerHTML = '';
-            addMeasureBlock();
-        }
+        if (container) container.innerHTML = '';
     });
 
     // Переключение таблицы

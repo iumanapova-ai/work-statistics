@@ -73,8 +73,7 @@ h3 {
 }
 
 .form-row input,
-.form-row textarea,
-.form-row select {
+.form-row textarea {
     padding: 10px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
@@ -83,8 +82,7 @@ h3 {
 }
 
 .form-row input:focus,
-.form-row textarea:focus,
-.form-row select:focus {
+.form-row textarea:focus {
     outline: none;
     border-color: #667eea;
 }
@@ -151,14 +149,14 @@ h3 {
     background: #218838;
 }
 
-.btn-add-measure {
+.btn-measure {
     background: #17a2b8;
     color: white;
     padding: 8px 15px;
     font-size: 13px;
 }
 
-.btn-add-measure:hover {
+.btn-measure:hover {
     background: #138496;
 }
 
