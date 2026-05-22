@@ -41,8 +41,13 @@
                 <h3>🚪 Добавить запись в дежурку</h3>
 
                 <div class="form-group">
-                    <label>📅 Период (с ПН по ВСКР) *</label>
-                    <input type="text" id="dutyPeriod" placeholder="например: с 18.05.26 - 24.05.26" class="full-width">
+                    <label>📅 Период *</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="date" id="dutyPeriodFrom" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <span>—</span>
+                        <input type="date" id="dutyPeriodTo" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <small class="hint">Выберите начальную и конечную дату периода</small>
                 </div>
 
                 <div class="form-group">
@@ -51,13 +56,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label>📋 Меры (можно выбрать несколько)</label>
-                    <div id="measuresContainer">
-                        <div class="measure-row">
-                            <button type="button" class="btn btn-add-measure" onclick="addMeasureRow()">+ Добавить меру</button>
-                        </div>
-                    </div>
-                    <small class="hint">Можно добавить несколько мер. У каждой будет: мера + новый вид + ссылка на ошибку</small>
+                    <label>📋 Меры (можно добавить несколько)</label>
+                    <div id="measuresContainer"></div>
+                    <button type="button" id="addMeasureBlockBtn" class="btn btn-add-measure" style="margin-top: 10px;">+ Добавить меру</button>
+                    <small class="hint">Каждая мера включает: Новый вид, Новое решение, ссылку на задачу и ссылку на ошибку</small>
                 </div>
 
                 <button id="addDutyBtn" class="btn btn-primary">➕ Добавить в дежурку</button>
@@ -74,7 +76,7 @@
         <div id="periodFilterBlock" style="display: none;" class="card">
             <h3>📅 Фильтр по периодам</h3>
             <div class="form-row">
-                <input type="text" id="filterPeriod" placeholder="Поиск по периоду (например: 18.05.26)" class="flex-1">
+                <input type="text" id="filterPeriod" placeholder="Поиск по периоду (например: 2024-01)" class="flex-1">
                 <button id="applyFilterBtn" class="btn btn-secondary">🔍 Найти</button>
                 <button id="clearFilterBtn" class="btn btn-secondary">❌ Сбросить</button>
             </div>

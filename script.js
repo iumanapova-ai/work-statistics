@@ -11,13 +11,7 @@ const tables = {
 
 function showMessage(text, type) {
     let msgDiv = document.getElementById('message');
-    if (!msgDiv) {
-        const card = document.querySelector('.card');
-        msgDiv = document.createElement('div');
-        msgDiv.id = 'message';
-        msgDiv.className = 'message';
-        card.appendChild(msgDiv);
-    }
+    if (!msgDiv) return;
     msgDiv.textContent = text;
     msgDiv.className = `message ${type}`;
     msgDiv.style.display = 'block';
@@ -26,46 +20,46 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-function addMeasureRow(measureData = null) {
+// ========== РАБОТА С МЕРАМИ ==========
+
+function addMeasureBlock(measureData = null) {
     const container = document.getElementById('measuresContainer');
     if (!container) return;
 
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'measure-row';
-    rowDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;';
+    const blockDiv = document.createElement('div');
+    blockDiv.className = 'measure-card';
 
-    rowDiv.innerHTML = `
-        <select class="measure-select" style="flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
-            <option value="">— Выберите меру —</option>
-            <option value="Предупреждение">Предупреждение</option>
-            <option value="Выговор">Выговор</option>
-            <option value="Лишение премии">Лишение премии</option>
-            <option value="Увольнение">Увольнение</option>
-            <option value="Благодарность">Благодарность</option>
-            <option value="Премия">Премия</option>
-        </select>
-        <input type="text" placeholder="Новый вид" class="measure-type" style="flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
-        <input type="url" placeholder="Ссылка на ошибку" class="measure-error" style="flex: 2; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
-        <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer;" onclick="this.parentElement.remove()">✖️</button>
+    blockDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>📌 Мера</strong>
+            <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.closest('.measure-card').remove()">✖️ Удалить</button>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <input type="text" class="measure-new-type" placeholder="Новый вид" style="flex: 1; min-width: 150px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.new_type || ''}">
+            <input type="text" class="measure-new-solution" placeholder="Новое решение" style="flex: 1; min-width: 150px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.new_solution || ''}">
+            <input type="url" class="measure-task-link" placeholder="Задача в разработку (ссылка)" style="flex: 1; min-width: 200px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.task_link || ''}">
+            <input type="url" class="measure-error-link" placeholder="Ошибка (ссылка)" style="flex: 1; min-width: 200px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;" value="${measureData?.error_link || ''}">
+        </div>
     `;
 
-    const addButton = container.querySelector('.add-measure-btn');
-    if (addButton && addButton.parentElement) {
-        container.insertBefore(rowDiv, addButton.parentElement);
-    } else {
-        container.appendChild(rowDiv);
-    }
+    container.appendChild(blockDiv);
 }
 
 function collectMeasures() {
     const measures = [];
-    document.querySelectorAll('#measuresContainer .measure-row').forEach(row => {
-        if (row.querySelector('.add-measure-btn')) return;
-        const measure = row.querySelector('.measure-select')?.value;
-        const new_type = row.querySelector('.measure-type')?.value;
-        const error_link = row.querySelector('.measure-error')?.value;
-        if (measure) {
-            measures.push({ measure, new_type, error_link });
+    document.querySelectorAll('#measuresContainer .measure-card').forEach(card => {
+        const new_type = card.querySelector('.measure-new-type')?.value;
+        const new_solution = card.querySelector('.measure-new-solution')?.value;
+        const task_link = card.querySelector('.measure-task-link')?.value;
+        const error_link = card.querySelector('.measure-error-link')?.value;
+
+        if (new_type || new_solution || task_link || error_link) {
+            measures.push({
+                new_type: new_type || '',
+                new_solution: new_solution || '',
+                task_link: task_link || '',
+                error_link: error_link || ''
+            });
         }
     });
     return measures;
@@ -113,20 +107,24 @@ async function loadRecords() {
 
         tbody.innerHTML = data.map(record => {
             let measuresHtml = '';
-            try {
-                const measures = typeof record.measures === 'string' ? JSON.parse(record.measures) : record.measures;
-                if (measures && measures.length > 0) {
-                    measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
-                        measures.map(m => `<li><strong>${m.measure || '—'}</strong>${m.new_type ? ` → ${m.new_type}` : ''}${m.error_link ? ` → <a href="${m.error_link}" target="_blank">ошибка</a>` : ''}</li>`).join('') +
-                        '</ul>';
-                }
-            } catch(e) { measuresHtml = '<i>ошибка данных</i>'; }
+            if (record.measures && record.measures.length > 0) {
+                measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
+                    record.measures.map(m => `
+                        <li>
+                            <strong>Новый вид:</strong> ${m.new_type || '—'}<br>
+                            <strong>Новое решение:</strong> ${m.new_solution || '—'}
+                            ${m.task_link ? `<br>🚀 <a href="${m.task_link}" target="_blank">Задача в разработку</a>` : ''}
+                            ${m.error_link ? `<br>⚠️ <a href="${m.error_link}" target="_blank">Ошибка</a>` : ''}
+                        </li>
+                    `).join('') +
+                    '</ul>';
+            }
 
             return `
                 <tr>
                     <td><strong>${record.id}</strong></td>
                     <td>
-                        📅 <strong>Период:</strong> ${record.period}<br>
+                        📅 <strong>Период:</strong> ${record.period_from && record.period_to ? `${record.period_from} — ${record.period_to}` : record.period}<br>
                         🔢 <strong>Количество:</strong> ${record.quantity}<br>
                         📋 <strong>Меры:</strong> ${measuresHtml || '—'}
                     </td>
@@ -178,9 +176,13 @@ async function addConsultation(link, comment) {
     return true;
 }
 
-async function addDutyRecord(period, quantity, measuresArray) {
+async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
+    const periodText = `${periodFrom} — ${periodTo}`;
+
     const { error } = await sb.from('duty_room').insert([{
-        period: period,
+        period_from: periodFrom,
+        period_to: periodTo,
+        period: periodText,
         quantity: parseInt(quantity),
         measures: measuresArray,
         created_at: new Date().toISOString()
@@ -218,20 +220,13 @@ window.editRecord = async function(id) {
     modal.style.display = 'flex';
 
     if (currentTable === 'duty_room') {
-        let measuresStr = '';
-        try {
-            const measures = typeof data.measures === 'string' ? JSON.parse(data.measures) : data.measures;
-            if (measures && measures.length) {
-                measuresStr = JSON.stringify(measures);
-            }
-        } catch(e) {}
-
         modal.innerHTML = `
             <div class="modal-content">
                 <h3>Редактировать запись #${id}</h3>
-                <input type="text" id="editPeriod" value="${data.period || ''}" placeholder="Период">
+                <input type="date" id="editPeriodFrom" value="${data.period_from || ''}" placeholder="Период от">
+                <input type="date" id="editPeriodTo" value="${data.period_to || ''}" placeholder="Период до">
                 <input type="number" id="editQuantity" value="${data.quantity || ''}" placeholder="Количество">
-                <input type="text" id="editMeasures" value='${measuresStr}' placeholder="Меры (JSON)">
+                <textarea id="editMeasures" rows="5" placeholder="Меры (JSON)">${JSON.stringify(data.measures || [], null, 2)}</textarea>
                 <div class="button-group">
                     <button id="saveEditBtn">💾 Сохранить</button>
                     <button id="cancelEditBtn">❌ Отмена</button>
@@ -263,10 +258,13 @@ window.editRecord = async function(id) {
             } catch(e) { measuresVal = null; }
 
             const updates = {
-                period: document.getElementById('editPeriod').value,
+                period_from: document.getElementById('editPeriodFrom').value,
+                period_to: document.getElementById('editPeriodTo').value,
                 quantity: parseInt(document.getElementById('editQuantity').value),
                 measures: measuresVal
             };
+            updates.period = `${updates.period_from} — ${updates.period_to}`;
+
             const { error } = await sb.from('duty_room').update(updates).eq('id', id);
             if (error) showMessage(`Ошибка: ${error.message}`, 'error');
             else showMessage('✅ Обновлено', 'success');
@@ -288,7 +286,7 @@ window.editRecord = async function(id) {
 
 async function loadCombinedReport() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
+    tbody.innerHTML = '<td><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
     document.getElementById('currentTableTitle').innerHTML = '📊 ОБЩИЙ СПИСОК (все таблицы)';
 
     let allRecords = [];
@@ -329,75 +327,73 @@ function clearFilter() {
 
 // Инициализация после загрузки страницы
 document.addEventListener('DOMContentLoaded', () => {
+    // Добавляем первый блок меры
     if (document.getElementById('measuresContainer')) {
-        addMeasureRow();
+        addMeasureBlock();
     }
 
-    const addConsultationBtn = document.getElementById('addConsultationBtn');
-    if (addConsultationBtn) {
-        addConsultationBtn.addEventListener('click', async () => {
-            const link = document.getElementById('consultationLink').value.trim();
-            const comment = document.getElementById('consultationComment').value.trim();
-            if (!link) { showMessage('❌ Введите ссылку', 'error'); return; }
-            await addConsultation(link, comment);
-            document.getElementById('consultationLink').value = '';
-            document.getElementById('consultationComment').value = '';
-        });
-    }
+    // Обработчик добавления меры
+    document.getElementById('addMeasureBlockBtn')?.addEventListener('click', () => {
+        addMeasureBlock();
+    });
 
-    const addDutyBtn = document.getElementById('addDutyBtn');
-    if (addDutyBtn) {
-        addDutyBtn.addEventListener('click', async () => {
-            const period = document.getElementById('dutyPeriod').value.trim();
-            const quantity = document.getElementById('dutyQuantity').value;
-            const measuresArray = collectMeasures();
+    // Обработчик добавления консультации
+    document.getElementById('addConsultationBtn')?.addEventListener('click', async () => {
+        const link = document.getElementById('consultationLink').value.trim();
+        const comment = document.getElementById('consultationComment').value.trim();
+        if (!link) { showMessage('❌ Введите ссылку', 'error'); return; }
+        await addConsultation(link, comment);
+        document.getElementById('consultationLink').value = '';
+        document.getElementById('consultationComment').value = '';
+    });
 
-            if (!period || !quantity) {
-                showMessage('❌ Заполните период и количество', 'error');
-                return;
-            }
+    // Обработчик добавления в дежурку
+    document.getElementById('addDutyBtn')?.addEventListener('click', async () => {
+        const periodFrom = document.getElementById('dutyPeriodFrom').value;
+        const periodTo = document.getElementById('dutyPeriodTo').value;
+        const quantity = document.getElementById('dutyQuantity').value;
+        const measuresArray = collectMeasures();
 
-            await addDutyRecord(period, quantity, measuresArray);
+        if (!periodFrom || !periodTo) {
+            showMessage('❌ Выберите начальную и конечную дату периода', 'error');
+            return;
+        }
 
-            document.getElementById('dutyPeriod').value = '';
-            document.getElementById('dutyQuantity').value = '';
-            const container = document.getElementById('measuresContainer');
-            if (container) {
-                container.innerHTML = '<div class="measure-row"><button type="button" class="add-measure-btn" onclick="addMeasureRow()">+ Добавить меру</button></div>';
-                addMeasureRow();
-            }
-        });
-    }
+        if (!quantity) {
+            showMessage('❌ Введите количество', 'error');
+            return;
+        }
 
-    const switchTableBtn = document.getElementById('switchTableBtn');
-    if (switchTableBtn) {
-        switchTableBtn.addEventListener('click', () => {
-            currentTable = document.getElementById('tableSelector').value;
-            toggleFormByTable(currentTable);
-            loadRecords();
-        });
-    }
+        await addDutyRecord(periodFrom, periodTo, quantity, measuresArray);
 
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => loadRecords());
-    }
+        document.getElementById('dutyPeriodFrom').value = '';
+        document.getElementById('dutyPeriodTo').value = '';
+        document.getElementById('dutyQuantity').value = '';
+        const container = document.getElementById('measuresContainer');
+        if (container) {
+            container.innerHTML = '';
+            addMeasureBlock();
+        }
+    });
 
-    const combinedReportBtn = document.getElementById('combinedReportBtn');
-    if (combinedReportBtn) {
-        combinedReportBtn.addEventListener('click', () => loadCombinedReport());
-    }
+    // Переключение таблицы
+    document.getElementById('switchTableBtn')?.addEventListener('click', () => {
+        currentTable = document.getElementById('tableSelector').value;
+        toggleFormByTable(currentTable);
+        loadRecords();
+    });
 
-    const applyFilterBtn = document.getElementById('applyFilterBtn');
-    if (applyFilterBtn) {
-        applyFilterBtn.addEventListener('click', () => applyFilter());
-    }
+    // Обновление
+    document.getElementById('refreshBtn')?.addEventListener('click', () => loadRecords());
 
-    const clearFilterBtn = document.getElementById('clearFilterBtn');
-    if (clearFilterBtn) {
-        clearFilterBtn.addEventListener('click', () => clearFilter());
-    }
+    // Общий список
+    document.getElementById('combinedReportBtn')?.addEventListener('click', () => loadCombinedReport());
 
+    // Фильтры
+    document.getElementById('applyFilterBtn')?.addEventListener('click', () => applyFilter());
+    document.getElementById('clearFilterBtn')?.addEventListener('click', () => clearFilter());
+
+    // Загружаем данные
     toggleFormByTable(currentTable);
     loadRecords();
 });

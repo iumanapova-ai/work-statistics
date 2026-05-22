@@ -292,17 +292,10 @@ h3 {
     font-size: 12px;
 }
 
-.measure-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-}
-
-.measure-row select,
-.measure-row input {
-    flex: 1;
-    padding: 8px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
+.measure-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
 }
