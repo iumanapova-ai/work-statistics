@@ -42,7 +42,6 @@ function formatDate(dateString) {
     return `${day}.${month}.${year}`;
 }
 
-// ========== РАБОТА С МЕРАМИ ==========
 function addMeasureByType(type, containerId = 'measuresContainer') {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -104,7 +103,6 @@ function collectMeasures(containerId = 'measuresContainer') {
     return measures;
 }
 
-// ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
 function switchTab(tableName) {
     const consultationForm = document.getElementById('consultationForm');
     const dutyForm = document.getElementById('dutyRoomForm');
@@ -126,36 +124,24 @@ function switchTab(tableName) {
     }
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ (без кэша, без зацикливаний) ==========
-// ========== ЗАГРУЗКА ДАННЫХ (С ПОВТОРНЫМИ ПОПЫТКАМИ) ==========
-async function loadAllData(retryCount = 0) {
-    if (isLoading) {
-        console.log('Загрузка уже идёт, пропускаем');
-        return;
-    }
+async function loadAllData() {
+    if (isLoading) return;
 
     isLoading = true;
     showSpinner(true);
 
     try {
         refreshCounter++;
-        console.log(`🔄 Загрузка #${refreshCounter}, попытка ${retryCount + 1}`);
+        console.log(`🔄 Загрузка #${refreshCounter}`);
 
-        // Таймаут для запроса (30 секунд)
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 30000)
-        );
-
-        const fetchPromise = Promise.all([
-            sb.from('Consultation_scenario').select('*').limit(500),
-            sb.from('duty_room').select('*').limit(500)
+        const [consResponse, dutyResponse] = await Promise.all([
+            sb.from('Consultation_scenario').select('*'),
+            sb.from('duty_room').select('*')
         ]);
-
-        const [consResponse, dutyResponse] = await Promise.race([fetchPromise, timeoutPromise]);
 
         const newRecords = [];
 
-        if (consResponse.data && consResponse.data.length > 0) {
+        if (consResponse.data) {
             newRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
                 source: 'consultation',
@@ -167,7 +153,7 @@ async function loadAllData(retryCount = 0) {
             })));
         }
 
-        if (dutyResponse.data && dutyResponse.data.length > 0) {
+        if (dutyResponse.data) {
             newRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
                 source: 'duty',
@@ -182,76 +168,35 @@ async function loadAllData(retryCount = 0) {
             })));
         }
 
-        // Сортируем
-        newRecords.sort((a, b) => {
-            const dateA = a.created_at || '';
-            const dateB = b.created_at || '';
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return dateB.localeCompare(dateA);
-        });
-
+        newRecords.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
         allRecords = newRecords;
-        console.log(`📊 Загружено записей: ${allRecords.length}`);
 
         applyFilters();
-        showMessage(`✅ Загружено ${allRecords.length} записей`, 'success');
 
     } catch (error) {
-        console.error('❌ Ошибка загрузки:', error);
-
-        // Повторяем до 3 раз при ошибке соединения
-        if (retryCount < 3 && (error.message === 'Timeout' || error.message?.includes('ERR_CONNECTION_RESET'))) {
-            console.log(`🔄 Повторная попытка через ${(retryCount + 1) * 2} секунды...`);
-            showMessage(`Ошибка соединения, повторная попытка ${retryCount + 1}/3...`, 'error');
-            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
-            await loadAllData(retryCount + 1);
-            return;
-        }
-
-        const tbody = document.getElementById('tableBody');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">
-                ⚠️ Ошибка подключения к базе данных.<br>
-                Проверьте интернет или нажмите "🔄 Обновить"<br>
-                <small>${error.message || 'Неизвестная ошибка'}</small>
-            <\/td><\/tr>`;
-        }
-        showMessage('❌ Ошибка загрузки данных. Нажмите "Обновить"', 'error');
+        console.error('Ошибка:', error);
+        showMessage('Ошибка загрузки данных', 'error');
     } finally {
         showSpinner(false);
         isLoading = false;
     }
 }
 
-// ========== ФИЛЬТРАЦИЯ ==========
 function applyFilters() {
     let filtered = [...allRecords];
 
     if (currentFilters.table !== 'all') {
         filtered = filtered.filter(r => r.source === currentFilters.table);
     }
-
     if (currentFilters.dateFrom) {
         filtered = filtered.filter(r => r.displayDate >= currentFilters.dateFrom);
     }
-
     if (currentFilters.dateTo) {
         filtered = filtered.filter(r => r.displayDate <= currentFilters.dateTo);
     }
-
     if (currentFilters.text) {
         const searchText = currentFilters.text.toLowerCase();
-        filtered = filtered.filter(r => {
-            if (r.source === 'consultation') {
-                return (r.link?.toLowerCase().includes(searchText) ||
-                       r.comment?.toLowerCase().includes(searchText));
-            } else {
-                return (r.period?.toLowerCase().includes(searchText) ||
-                       JSON.stringify(r.measures).toLowerCase().includes(searchText));
-            }
-        });
+        filtered = filtered.filter(r => JSON.stringify(r).toLowerCase().includes(searchText));
     }
 
     filteredRecords = filtered;
@@ -260,7 +205,6 @@ function applyFilters() {
 
 function renderTable() {
     const tbody = document.getElementById('tableBody');
-
     if (!tbody) return;
 
     if (filteredRecords.length === 0) {
@@ -272,72 +216,61 @@ function renderTable() {
         let dataHtml = '';
         let sourceClass = record.source === 'consultation' ? 'source-consultation' : 'source-duty';
         let sourceText = record.source === 'consultation' ? '📋 Консультация' : '🚪 Дежурка';
-        const key = `${record.source}_${record.id}`;
-        const isChecked = selectedIds.has(key);
 
         if (record.source === 'consultation') {
-            const linkText = record.link && record.link.length > 80 ? record.link.substring(0, 80) + '...' : (record.link || '—');
-            dataHtml = `
-                🔗 <a href="${record.link || '#'}" target="_blank">${linkText}</a><br>
-                💬 Комментарий: ${record.comment || '—'}
-            `;
+            dataHtml = `🔗 <a href="${record.link}" target="_blank">${record.link}</a><br>💬 ${record.comment || '—'}`;
         } else {
             let measuresHtml = '';
-            if (record.measures && record.measures.length > 0) {
-                measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
-                    record.measures.map(m => {
-                        switch(m.type) {
-                            case 'new_type': return `<li>🆕 Новый вид: ${m.value || '—'}</li>`;
-                            case 'new_solution': return `<li>💡 Новое решение: ${m.value || '—'}</li>`;
-                            case 'task': return `<li>🚀 <a href="${m.value}" target="_blank">Задача</a></li>`;
-                            case 'error': return `<li>⚠️ <a href="${m.value}" target="_blank">Ошибка</a></li>`;
-                            default: return '';
-                        }
-                    }).join('') +
-                    '</ul>';
+            if (record.measures?.length) {
+                measuresHtml = '<ul>' + record.measures.map(m => {
+                    switch(m.type) {
+                        case 'new_type': return `<li>🆕 ${m.value}</li>`;
+                        case 'new_solution': return `<li>💡 ${m.value}</li>`;
+                        case 'task': return `<li>🚀 <a href="${m.value}" target="_blank">Задача</a></li>`;
+                        case 'error': return `<li>⚠️ <a href="${m.value}" target="_blank">Ошибка</a></li>`;
+                        default: return '';
+                    }
+                }).join('') + '</ul>';
             }
-
-            const periodText = record.period_from && record.period_to ? `${formatDate(record.period_from)} — ${formatDate(record.period_to)}` : (record.period || '—');
-            dataHtml = `
-                📅 Период: ${periodText}<br>
-                🔢 Количество: ${record.quantity || 0}<br>
-                📋 Меры: ${measuresHtml || '—'}
-            `;
+            const periodText = record.period_from ? `${formatDate(record.period_from)} — ${formatDate(record.period_to)}` : record.period;
+            dataHtml = `📅 ${periodText}<br>🔢 ${record.quantity}<br>📋 ${measuresHtml || '—'}`;
         }
 
         return `
             <tr>
-                <td style="text-align: center;"><input type="checkbox" class="row-checkbox" data-source="${record.source}" data-id="${record.id}" ${isChecked ? 'checked' : ''}></td>
+                <td><input type="checkbox" class="row-checkbox" data-source="${record.source}" data-id="${record.id}" ${selectedIds.has(`${record.source}_${record.id}`) ? 'checked' : ''}></td>
                 <td>${index + 1}</td>
                 <td><span class="source-badge ${sourceClass}">${sourceText}</span></td>
                 <td>${dataHtml}</td>
-                <td>
-                    <button class="edit-btn" onclick="editRecord(${record.id}, '${record.source}')">✏️</button>
-                    <button class="delete-btn" onclick="deleteRecord(${record.id}, '${record.source}')">🗑️</button>
-                </td>
+                <td><button class="edit-btn" onclick="editRecord(${record.id}, '${record.source}')">✏️</button><button class="delete-btn" onclick="deleteRecord(${record.id}, '${record.source}')">🗑️</button></td>
             </tr>
         `;
     }).join('');
 
-    // Привязываем события к чекбоксам
     document.querySelectorAll('.row-checkbox').forEach(cb => {
-        cb.removeEventListener('change', handleCheckboxChange);
-        cb.addEventListener('change', handleCheckboxChange);
+        cb.onclick = (e) => {
+            const source = cb.dataset.source;
+            const id = parseInt(cb.dataset.id);
+            const key = `${source}_${id}`;
+            if (selectedIds.has(key)) selectedIds.delete(key);
+            else selectedIds.add(key);
+            updateSelectAllState();
+        };
     });
-
     updateSelectAllState();
 }
 
-function handleCheckboxChange(e) {
-    const source = e.target.dataset.source;
-    const id = parseInt(e.target.dataset.id);
-    toggleSelect(source, id);
+function updateSelectAllState() {
+    const selectAll = document.getElementById('selectAllCheckbox');
+    if (!selectAll) return;
+    const allSelected = filteredRecords.length > 0 && filteredRecords.every(r => selectedIds.has(`${r.source}_${r.id}`));
+    const someSelected = filteredRecords.some(r => selectedIds.has(`${r.source}_${r.id}`));
+    selectAll.checked = allSelected;
+    selectAll.indeterminate = someSelected && !allSelected;
 }
 
 function toggleSelectAll() {
     const selectAll = document.getElementById('selectAllCheckbox');
-    if (!selectAll) return;
-
     if (selectAll.checked) {
         filteredRecords.forEach(r => selectedIds.add(`${r.source}_${r.id}`));
     } else {
@@ -346,131 +279,52 @@ function toggleSelectAll() {
     renderTable();
 }
 
-function toggleSelect(source, id) {
-    const key = `${source}_${id}`;
-    if (selectedIds.has(key)) {
-        selectedIds.delete(key);
-    } else {
-        selectedIds.add(key);
-    }
-    updateSelectAllState();
-}
-
-function updateSelectAllState() {
-    const selectAll = document.getElementById('selectAllCheckbox');
-    if (!selectAll) return;
-
-    const allSelected = filteredRecords.length > 0 &&
-        filteredRecords.every(r => selectedIds.has(`${r.source}_${r.id}`));
-    const someSelected = filteredRecords.some(r => selectedIds.has(`${r.source}_${r.id}`));
-
-    selectAll.checked = allSelected;
-    selectAll.indeterminate = someSelected && !allSelected;
-}
-
-// ========== CRUD ==========
 async function addConsultation(link, comment) {
-    const { error } = await sb.from('Consultation_scenario').insert([{
-        link: link,
-        comment: comment || null,
-        created_at: new Date().toISOString()
-    }]);
-
-    if (error) {
-        showMessage(`❌ ${error.message}`, 'error');
-        return false;
-    }
-
-    showMessage('✅ Консультация добавлена!', 'success');
-
-    // Очищаем форму
+    const { error } = await sb.from('Consultation_scenario').insert([{ link, comment, created_at: new Date().toISOString() }]);
+    if (error) { showMessage(`❌ ${error.message}`, 'error'); return; }
+    showMessage('✅ Добавлено', 'success');
     document.getElementById('consultationLink').value = '';
     document.getElementById('consultationComment').value = '';
-
-    // Перезагружаем данные
     await loadAllData();
-    return true;
 }
 
-async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
-    const periodText = `${periodFrom} — ${periodTo}`;
-    const cleanMeasures = measuresArray.filter(m => m.value && m.value.trim() !== '');
-
+async function addDutyRecord(periodFrom, periodTo, quantity, measures) {
     const { error } = await sb.from('duty_room').insert([{
-        period_from: periodFrom,
-        period_to: periodTo,
-        period: periodText,
-        quantity: parseInt(quantity),
-        measures: cleanMeasures,
-        created_at: new Date().toISOString()
+        period_from: periodFrom, period_to: periodTo, period: `${periodFrom} — ${periodTo}`,
+        quantity: parseInt(quantity), measures, created_at: new Date().toISOString()
     }]);
-
-    if (error) {
-        showMessage(`❌ ${error.message}`, 'error');
-        return false;
-    }
-
-    showMessage('✅ Запись в дежурку добавлена!', 'success');
-
-    // Очищаем форму
+    if (error) { showMessage(`❌ ${error.message}`, 'error'); return; }
+    showMessage('✅ Добавлено', 'success');
     document.getElementById('dutyPeriodFrom').value = '';
     document.getElementById('dutyPeriodTo').value = '';
     document.getElementById('dutyQuantity').value = '';
     document.getElementById('measuresContainer').innerHTML = '';
-
-    // Перезагружаем данные
     await loadAllData();
-    return true;
 }
 
-window.deleteRecord = async function(id, source) {
-    if (!confirm('Удалить запись?')) return;
-    const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
-    const { error } = await sb.from(tableName).delete().eq('id', id);
-    if (error) {
-        showMessage(`❌ ${error.message}`, 'error');
-    } else {
-        selectedIds.delete(`${source}_${id}`);
-        showMessage('✅ Удалено', 'success');
-        await loadAllData();
-    }
+window.deleteRecord = async (id, source) => {
+    if (!confirm('Удалить?')) return;
+    const table = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
+    await sb.from(table).delete().eq('id', id);
+    selectedIds.delete(`${source}_${id}`);
+    await loadAllData();
 };
 
-// ========== РЕДАКТИРОВАНИЕ ==========
-window.editRecord = async function(id, source) {
-    const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
-    const { data, error } = await sb.from(tableName).select('*').eq('id', id).single();
-    if (error) { showMessage('Ошибка загрузки', 'error'); return; }
-
-    const oldModal = document.querySelector('.modal');
-    if (oldModal) oldModal.remove();
-
-    if (source === 'duty') {
-        const newValue = prompt('Редактировать запись (JSON):\n\nФормат: {"period_from":"2024-01-01","period_to":"2024-01-07","quantity":10,"measures":[]}', JSON.stringify({
-            period_from: data.period_from,
-            period_to: data.period_to,
-            quantity: data.quantity,
-            measures: data.measures
-        }, null, 2));
-        if (newValue) {
-            try {
-                const updates = JSON.parse(newValue);
-                await sb.from('duty_room').update(updates).eq('id', id);
-                showMessage('✅ Обновлено', 'success');
-                await loadAllData();
-            } catch(e) { showMessage('Ошибка формата JSON', 'error'); }
-        }
+window.editRecord = async (id, source) => {
+    const newVal = prompt('Новое значение (JSON для дежурки, ссылка для консультации)');
+    if (!newVal) return;
+    const table = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
+    if (source === 'consultation') {
+        await sb.from(table).update({ link: newVal }).eq('id', id);
     } else {
-        const newLink = prompt('Введите новую ссылку:', data.link);
-        if (newLink) {
-            await sb.from('Consultation_scenario').update({ link: newLink }).eq('id', id);
-            showMessage('✅ Обновлено', 'success');
-            await loadAllData();
-        }
+        try {
+            const updates = JSON.parse(newVal);
+            await sb.from(table).update(updates).eq('id', id);
+        } catch(e) { showMessage('Ошибка JSON', 'error'); return; }
     }
+    await loadAllData();
 };
-
-// ========== ЭКСПОРТ ==========
+//Экспорт данных в эксель
 function exportSelected() {
     const selectedRecords = filteredRecords.filter(r => selectedIds.has(`${r.source}_${r.id}`));
     if (selectedRecords.length === 0) {
@@ -483,43 +337,126 @@ function exportSelected() {
 
     const wb = XLSX.utils.book_new();
 
-    // Простой экспорт выбранных записей
-    const simpleData = [
-        ['Источник', 'Дата/Период', 'Количество', 'Ссылка', 'Комментарий', 'Меры']
-    ];
+    // ========== 1. СВОДНЫЙ ОТЧЕТ (первый лист) ==========
+    if (dutyRecords.length > 0 || consultationRecords.length > 0) {
+        const summaryData = [];
 
-    selectedRecords.forEach(record => {
-        if (record.source === 'consultation') {
-            simpleData.push([
-                'Консультация',
-                formatDate(record.displayDate),
-                '',
-                record.link || '',
-                record.comment || '',
-                ''
-            ]);
-        } else {
-            let measuresText = '';
-            if (record.measures && record.measures.length > 0) {
-                measuresText = record.measures.map(m => `${m.type === 'new_type' ? 'Новый вид' : m.type === 'new_solution' ? 'Новое решение' : m.type === 'task' ? 'Задача' : 'Ошибка'}: ${m.value}`).join('; ');
-            }
-            simpleData.push([
-                'Дежурка',
-                record.period_from && record.period_to ? `${formatDate(record.period_from)} — ${formatDate(record.period_to)}` : record.period,
-                record.quantity || 0,
-                '',
-                '',
-                measuresText
+        if (dutyRecords.length > 0) {
+            summaryData.push(['ДЕЖУРКА']);
+            summaryData.push(['Период', 'Количество', 'Новых видов', 'Новых решений', 'Задач', 'Ошибок']);
+
+            let totalDutyQuantity = 0, totalDutyNewTypes = 0, totalDutyNewSolutions = 0, totalDutyTasks = 0, totalDutyErrors = 0;
+
+            dutyRecords.forEach(record => {
+                const measures = record.measures || [];
+                const qty = record.quantity || 0;
+                totalDutyQuantity += qty;
+                totalDutyNewTypes += measures.filter(m => m.type === 'new_type').length;
+                totalDutyNewSolutions += measures.filter(m => m.type === 'new_solution').length;
+                totalDutyTasks += measures.filter(m => m.type === 'task').length;
+                totalDutyErrors += measures.filter(m => m.type === 'error').length;
+
+                summaryData.push([
+                    `${formatDate(record.period_from)} — ${formatDate(record.period_to)}`,
+                    qty,
+                    measures.filter(m => m.type === 'new_type').length,
+                    measures.filter(m => m.type === 'new_solution').length,
+                    measures.filter(m => m.type === 'task').length,
+                    measures.filter(m => m.type === 'error').length
+                ]);
+            });
+
+            summaryData.push(['ИТОГО ПО ДЕЖУРКЕ:', totalDutyQuantity, totalDutyNewTypes, totalDutyNewSolutions, totalDutyTasks, totalDutyErrors]);
+            summaryData.push([]);
+        }
+
+        if (consultationRecords.length > 0) {
+            summaryData.push(['СЦЕНАРИИ КОНСУЛЬТАЦИЙ']);
+            summaryData.push(['Дата', 'Ссылка', 'Комментарий']);
+
+            consultationRecords.forEach(record => {
+                summaryData.push([formatDate(record.displayDate), record.link || '', record.comment || '']);
+            });
+
+            summaryData.push([]);
+            summaryData.push([`ВСЕГО ЗАПИСЕЙ: ${consultationRecords.length}`]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(summaryData);
+        ws['!cols'] = [{ wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, ws, '📊 Сводный отчет');
+    }
+
+    // ========== 2. ДЕЖУРКА (отдельный лист) ==========
+    if (dutyRecords.length > 0) {
+        const dutyData = [];
+
+        // Основная таблица
+        dutyData.push(['Период', 'Количество обращений']);
+
+        let totalQuantity = 0;
+        const allNewTypes = [];
+        const allNewSolutions = [];
+        const allTasks = [];
+        const allErrors = [];
+
+        dutyRecords.forEach(record => {
+            const measures = record.measures || [];
+            const qty = record.quantity || 0;
+            totalQuantity += qty;
+
+            dutyData.push([`${formatDate(record.period_from)} — ${formatDate(record.period_to)}`, qty]);
+
+            allNewTypes.push(...measures.filter(m => m.type === 'new_type').map(m => m.value));
+            allNewSolutions.push(...measures.filter(m => m.type === 'new_solution').map(m => m.value));
+            allTasks.push(...measures.filter(m => m.type === 'task').map(m => m.value));
+            allErrors.push(...measures.filter(m => m.type === 'error').map(m => m.value));
+        });
+
+        dutyData.push(['ИТОГО:', totalQuantity]);
+        dutyData.push([]);
+
+        // Таблица мер
+        dutyData.push(['Меры']);
+        dutyData.push(['Новый вид', 'Новое решение', 'Задача в разработку', 'Ошибка']);
+
+        const maxRows = Math.max(allNewTypes.length, allNewSolutions.length, allTasks.length, allErrors.length);
+        for (let i = 0; i < maxRows; i++) {
+            dutyData.push([
+                allNewTypes[i] || '',
+                allNewSolutions[i] || '',
+                allTasks[i] || '',
+                allErrors[i] || ''
             ]);
         }
-    });
 
-    const ws = XLSX.utils.aoa_to_sheet(simpleData);
-    ws['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 40 }, { wch: 30 }, { wch: 50 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Выбранные записи');
+        dutyData.push(['ИТОГО ПО МЕРАМ:', allNewTypes.length, allNewSolutions.length, allTasks.length, allErrors.length]);
+
+        const ws = XLSX.utils.aoa_to_sheet(dutyData);
+        ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 40 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, ws, '🚪 Дежурка');
+    }
+
+    // ========== 3. КОНСУЛЬТАЦИИ (отдельный лист) ==========
+    if (consultationRecords.length > 0) {
+        const consData = [
+            ['Дата', 'Ссылка', 'Комментарий']
+        ];
+
+        consultationRecords.forEach(record => {
+            consData.push([formatDate(record.displayDate), record.link || '', record.comment || '']);
+        });
+
+        consData.push([]);
+        consData.push([`ВСЕГО ЗАПИСЕЙ: ${consultationRecords.length}`]);
+
+        const ws = XLSX.utils.aoa_to_sheet(consData);
+        ws['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, ws, '📋 Консультации');
+    }
 
     const date = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    XLSX.writeFile(wb, `selected_records_${date}.xlsx`);
+    XLSX.writeFile(wb, `export_${date}.xlsx`);
     showMessage(`✅ Экспортировано ${selectedRecords.length} записей`, 'success');
 }
 
