@@ -210,6 +210,50 @@ h3 {
     border-left: 4px solid #dc3545;
 }
 
+/* ========== ОБЁРТКА ТАБЛИЦЫ ДЛЯ СПИННЕРА ========== */
+.table-wrapper {
+    position: relative;
+    min-height: 300px;
+}
+
+/* ========== СПИННЕР (РОМАШКА) - ПЕРЕКРЫВАЕТ ТАБЛИЦУ ========== */
+.spinner-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 15px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-right: 4px solid #764ba2;
+    border-bottom: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinner-container p {
+    color: #666;
+    font-size: 14px;
+}
+
 /* ========== ТАБЛИЦА ========== */
 .records-table {
     width: 100%;
@@ -238,38 +282,6 @@ h3 {
 
 .records-table td a:hover {
     text-decoration: underline;
-}
-
-/* ========== СПИННЕР (РОМАШКА) ========== */
-.spinner-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px;
-    text-align: center;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
-    border-right: 4px solid #764ba2;
-    border-bottom: 4px solid #667eea;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 15px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.spinner-container p {
-    color: #666;
-    font-size: 14px;
 }
 
 /* ========== ФИЛЬТР ========== */

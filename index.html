@@ -98,26 +98,29 @@
                 </div>
             </div>
 
-            <!-- Спиннер загрузки -->
-            <div id="loadingSpinner" class="spinner-container" style="display: none;">
-                <div class="spinner"></div>
-                <p>Загрузка данных...</p>
-            </div>
+            <!-- Обёртка для таблицы с относительным позиционированием -->
+            <div class="table-wrapper">
+                <!-- Спиннер загрузки (перекрывает таблицу) -->
+                <div id="loadingSpinner" class="spinner-container" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Загрузка данных...</p>
+                </div>
 
-            <div style="overflow-x: auto;">
-                <table class="records-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 60px;">№</th>
-                            <th style="width: 180px;">Источник</th>
-                            <th>Данные</th>
-                            <th style="width: 110px;">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="4" style="text-align: center;">Загрузка...<\/td><\/tr>
-                    </tbody>
-                </table>
+                <div style="overflow-x: auto;">
+                    <table class="records-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">№</th>
+                                <th style="width: 180px;">Источник</th>
+                                <th>Данные</th>
+                                <th style="width: 110px;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr><td colspan="4" style="text-align: center;">Загрузка...<\/td><\/tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

@@ -110,7 +110,7 @@ function switchTab(tableName) {
     }
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ (с кэшем и спиннером) ==========
+// ========== ЗАГРУЗКА ДАННЫХ (БЕЗ LIMIT И order В ОДНОМ) ==========
 async function loadAllData(forceRefresh = false) {
     if (isLoading) return;
 
@@ -126,25 +126,29 @@ async function loadAllData(forceRefresh = false) {
     const tbody = document.getElementById('tableBody');
     const spinner = document.getElementById('loadingSpinner');
 
-    // Показываем спиннер
     if (spinner) spinner.style.display = 'flex';
     if (tbody) tbody.style.opacity = '0.3';
 
     try {
         const startTime = performance.now();
 
-        const [consData, dutyData] = await Promise.all([
-            sb.from('Consultation_scenario').select('*').order('created_at', { ascending: false }).limit(500),
-            sb.from('duty_room').select('*').order('created_at', { ascending: false }).limit(500)
-        ]);
+        // Загружаем данные из обеих таблиц
+        const consultationPromise = sb.from('Consultation_scenario').select('*');
+        const dutyPromise = sb.from('duty_room').select('*');
+
+        const [consResponse, dutyResponse] = await Promise.all([consultationPromise, dutyPromise]);
+
+        console.log('Консультации:', consResponse);
+        console.log('Дежурка:', dutyResponse);
 
         const endTime = performance.now();
         console.log(`⚡ Загрузка заняла ${(endTime - startTime).toFixed(0)} мс`);
 
         allRecords = [];
 
-        if (consData.data) {
-            allRecords.push(...consData.data.map(r => ({
+        // Добавляем консультации
+        if (consResponse.data && consResponse.data.length > 0) {
+            allRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
                 source: 'consultation',
                 sourceName: 'Сценарии консультаций',
@@ -152,10 +156,13 @@ async function loadAllData(forceRefresh = false) {
                 link: r.link,
                 comment: r.comment
             })));
+        } else if (consResponse.error) {
+            console.error('Ошибка загрузки консультаций:', consResponse.error);
         }
 
-        if (dutyData.data) {
-            allRecords.push(...dutyData.data.map(r => ({
+        // Добавляем дежурку
+        if (dutyResponse.data && dutyResponse.data.length > 0) {
+            allRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
                 source: 'duty',
                 sourceName: 'Duty room',
@@ -166,9 +173,12 @@ async function loadAllData(forceRefresh = false) {
                 quantity: r.quantity,
                 measures: r.measures
             })));
+        } else if (dutyResponse.error) {
+            console.error('Ошибка загрузки дежурки:', dutyResponse.error);
         }
 
-        // Сохраняем в кэш
+        console.log('Всего записей:', allRecords.length);
+
         cachedData = allRecords;
         lastLoadTime = now;
 
@@ -176,7 +186,7 @@ async function loadAllData(forceRefresh = false) {
 
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="color: red;">Ошибка загрузки данных<\/td><\/tr>';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Ошибка загрузки данных: ${error.message}<\/td><\/tr>`;
     } finally {
         if (spinner) spinner.style.display = 'none';
         if (tbody) tbody.style.opacity = '1';
@@ -225,6 +235,7 @@ function renderTable() {
         return;
     }
 
+    // Сортируем по дате (новые сверху)
     filteredRecords.sort((a, b) => (b.displayDate || '').localeCompare(a.displayDate || ''));
 
     tbody.innerHTML = filteredRecords.map((record, index) => {
@@ -234,7 +245,7 @@ function renderTable() {
 
         if (record.source === 'consultation') {
             dataHtml = `
-                🔗 <a href="${record.link}" target="_blank">${record.link.substring(0, 80)}${record.link.length > 80 ? '...' : ''}</a><br>
+                🔗 <a href="${record.link}" target="_blank">${record.link.length > 80 ? record.link.substring(0, 80) + '...' : record.link}</a><br>
                 💬 Комментарий: ${record.comment || '—'}
             `;
         } else {
@@ -279,7 +290,7 @@ async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadAllData(true); // force refresh
+    loadAllData(true);
     return true;
 }
 
@@ -413,10 +424,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Фильтр иконка
-    document.getElementById('filterIcon').addEventListener('click', () => {
-        const panel = document.getElementById('filterPanel');
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    });
+    const filterIcon = document.getElementById('filterIcon');
+    if (filterIcon) {
+        filterIcon.addEventListener('click', () => {
+            const panel = document.getElementById('filterPanel');
+            if (panel) {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+    }
 
     // Элементы фильтров
     const filterDateFrom = document.getElementById('filterDateFrom');
@@ -435,52 +451,66 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFilters();
     }
 
-    filterDateFrom?.addEventListener('change', updateFilters);
-    filterDateTo?.addEventListener('change', updateFilters);
-    filterTable?.addEventListener('change', updateFilters);
-    filterText?.addEventListener('input', updateFilters);
+    if (filterDateFrom) filterDateFrom.addEventListener('change', updateFilters);
+    if (filterDateTo) filterDateTo.addEventListener('change', updateFilters);
+    if (filterTable) filterTable.addEventListener('change', updateFilters);
+    if (filterText) filterText.addEventListener('input', updateFilters);
 
-    clearFiltersBtn?.addEventListener('click', () => {
-        if (filterDateFrom) filterDateFrom.value = '';
-        if (filterDateTo) filterDateTo.value = '';
-        if (filterTable) filterTable.value = 'all';
-        if (filterText) filterText.value = '';
-        updateFilters();
-    });
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            if (filterDateFrom) filterDateFrom.value = '';
+            if (filterDateTo) filterDateTo.value = '';
+            if (filterTable) filterTable.value = 'all';
+            if (filterText) filterText.value = '';
+            updateFilters();
+        });
+    }
 
     // Меры
-    document.getElementById('addNewTypeBtn')?.addEventListener('click', () => addMeasureByType('new-type'));
-    document.getElementById('addNewSolutionBtn')?.addEventListener('click', () => addMeasureByType('new-solution'));
-    document.getElementById('addTaskBtn')?.addEventListener('click', () => addMeasureByType('task'));
-    document.getElementById('addErrorBtn')?.addEventListener('click', () => addMeasureByType('error'));
+    const addNewTypeBtn = document.getElementById('addNewTypeBtn');
+    const addNewSolutionBtn = document.getElementById('addNewSolutionBtn');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const addErrorBtn = document.getElementById('addErrorBtn');
+
+    if (addNewTypeBtn) addNewTypeBtn.addEventListener('click', () => addMeasureByType('new-type'));
+    if (addNewSolutionBtn) addNewSolutionBtn.addEventListener('click', () => addMeasureByType('new-solution'));
+    if (addTaskBtn) addTaskBtn.addEventListener('click', () => addMeasureByType('task'));
+    if (addErrorBtn) addErrorBtn.addEventListener('click', () => addMeasureByType('error'));
 
     // Добавление консультации
-    document.getElementById('addConsultationBtn')?.addEventListener('click', async () => {
-        const link = document.getElementById('consultationLink').value.trim();
-        const comment = document.getElementById('consultationComment').value.trim();
-        if (!link) { showMessage('❌ Введите ссылку', 'error'); return; }
-        await addConsultation(link, comment);
-        document.getElementById('consultationLink').value = '';
-        document.getElementById('consultationComment').value = '';
-    });
+    const addConsultationBtn = document.getElementById('addConsultationBtn');
+    if (addConsultationBtn) {
+        addConsultationBtn.addEventListener('click', async () => {
+            const link = document.getElementById('consultationLink').value.trim();
+            const comment = document.getElementById('consultationComment').value.trim();
+            if (!link) { showMessage('❌ Введите ссылку', 'error'); return; }
+            await addConsultation(link, comment);
+            document.getElementById('consultationLink').value = '';
+            document.getElementById('consultationComment').value = '';
+        });
+    }
 
     // Добавление в дежурку
-    document.getElementById('addDutyBtn')?.addEventListener('click', async () => {
-        const periodFrom = document.getElementById('dutyPeriodFrom').value;
-        const periodTo = document.getElementById('dutyPeriodTo').value;
-        const quantity = document.getElementById('dutyQuantity').value;
-        const measures = collectMeasures();
+    const addDutyBtn = document.getElementById('addDutyBtn');
+    if (addDutyBtn) {
+        addDutyBtn.addEventListener('click', async () => {
+            const periodFrom = document.getElementById('dutyPeriodFrom').value;
+            const periodTo = document.getElementById('dutyPeriodTo').value;
+            const quantity = document.getElementById('dutyQuantity').value;
+            const measures = collectMeasures();
 
-        if (!periodFrom || !periodTo) { showMessage('❌ Выберите период', 'error'); return; }
-        if (!quantity) { showMessage('❌ Введите количество', 'error'); return; }
+            if (!periodFrom || !periodTo) { showMessage('❌ Выберите период', 'error'); return; }
+            if (!quantity) { showMessage('❌ Введите количество', 'error'); return; }
 
-        await addDutyRecord(periodFrom, periodTo, quantity, measures);
+            await addDutyRecord(periodFrom, periodTo, quantity, measures);
 
-        document.getElementById('dutyPeriodFrom').value = '';
-        document.getElementById('dutyPeriodTo').value = '';
-        document.getElementById('dutyQuantity').value = '';
-        document.getElementById('measuresContainer').innerHTML = '';
-    });
+            document.getElementById('dutyPeriodFrom').value = '';
+            document.getElementById('dutyPeriodTo').value = '';
+            document.getElementById('dutyQuantity').value = '';
+            const container = document.getElementById('measuresContainer');
+            if (container) container.innerHTML = '';
+        });
+    }
 
     // Загружаем данные
     loadAllData();
