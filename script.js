@@ -1,78 +1,125 @@
-// Создаём клиент Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// script.js
+// supabase УЖЕ СОЗДАН в config.js, НЕ создаём его заново!
 
-console.log('=== НАЧАЛО РАБОТЫ ===');
-console.log('SUPABASE_URL:', SUPABASE_URL);
-console.log('supabase объект создан:', !!supabase);
+console.log('=== СКРИПТ ЗАГРУЖЕН ===');
+console.log('supabase готов:', typeof supabase);
 
-// Ждём, пока загрузится страница
-window.addEventListener('DOMContentLoaded', () => {
-    console.log('Страница загружена, ищем форму...');
+// Функция показа сообщений
+function showMessage(text, type) {
+    const msgDiv = document.getElementById('message');
+    if (!msgDiv) return;
+    msgDiv.textContent = text;
+    msgDiv.className = `message ${type}`;
+    msgDiv.style.display = 'block';
+    setTimeout(() => {
+        if (msgDiv) msgDiv.style.display = 'none';
+    }, 3000);
+}
 
-    const form = document.getElementById('consultationForm');
+// Загрузка записей
+async function loadRecords() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
 
-    if (!form) {
-        console.error('❌ Форма с id="consultationForm" не найдена!');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>';
+
+    const { data, error } = await supabase
+        .from('Consultation_scenario')
+        .select('*')
+        .order('date', { ascending: false });
+
+    if (error) {
+        console.error('Ошибка загрузки:', error);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Ошибка загрузки: ' + error.message + '</td></tr>';
         return;
     }
 
-    console.log('✅ Форма найдена, привязываю обработчик...');
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет записей. Добавьте первую!</td></tr>';
+        return;
+    }
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        console.log('=== ФОРМА ОТПРАВЛЕНА ===');
+    tbody.innerHTML = data.map(record => `
+        <tr>
+            <td>${new Date(record.date).toLocaleString('ru-RU')}</td>
+            <td><a href="${record.link}" target="_blank">${record.link.substring(0, 50)}${record.link.length > 50 ? '...' : ''}</a></td>
+            <td>${record.comment || '—'}</td>
+            <td><button class="delete-btn" onclick="deleteRecord(${record.id})">Удалить</button></td>
+        </tr>
+    `).join('');
+}
 
-        // Получаем данные из полей
-        const dateInput = document.getElementById('date');
-        const linkInput = document.getElementById('link');
-        const commentInput = document.getElementById('comment');
+// Добавление записи
+async function addRecord(date, link, comment) {
+    const { data, error } = await supabase
+        .from('Consultation_scenario')
+        .insert([{ date: date, link: link, comment: comment || null }]);
 
-        const date = dateInput ? dateInput.value : null;
-        const link = linkInput ? linkInput.value : null;
-        const comment = commentInput ? commentInput.value : null;
+    if (error) {
+        console.error('Ошибка:', error);
+        if (error.code === '23505') {
+            showMessage('❌ Такая ссылка уже существует!', 'error');
+        } else {
+            showMessage('❌ Ошибка: ' + error.message, 'error');
+        }
+        return false;
+    }
 
-        console.log('Дата:', date);
-        console.log('Ссылка:', link);
-        console.log('Комментарий:', comment);
+    showMessage('✅ Запись добавлена!', 'success');
+    loadRecords();
+    return true;
+}
 
-        // Проверяем, что поля заполнены
-        if (!date || !link) {
-            console.error('❌ Не все поля заполнены');
-            alert('Заполните дату и ссылку');
+// Удаление записи
+window.deleteRecord = async function(id) {
+    if (!confirm('Удалить запись?')) return;
+
+    const { error } = await supabase
+        .from('Consultation_scenario')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        showMessage('❌ Ошибка удаления: ' + error.message, 'error');
+    } else {
+        showMessage('✅ Запись удалена', 'success');
+        loadRecords();
+    }
+};
+
+// Обработка формы
+const form = document.getElementById('consultationForm');
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const date = document.getElementById('date').value;
+        const link = document.getElementById('link').value.trim();
+        const comment = document.getElementById('comment').value.trim();
+
+        if (!date) {
+            showMessage('❌ Укажите дату', 'error');
+            return;
+        }
+        if (!link) {
+            showMessage('❌ Введите ссылку', 'error');
+            return;
+        }
+        if (!link.startsWith('http://') && !link.startsWith('https://')) {
+            showMessage('❌ Ссылка должна начинаться с http:// или https://', 'error');
             return;
         }
 
-        // Пробуем отправить в Supabase
-        console.log('🟢 Отправляю запрос в Supabase...');
-
-        try {
-            const { data, error } = await supabase
-                .from('Consultation_scenario')
-                .insert([
-                    {
-                        date: date,
-                        link: link,
-                        comment: comment || null
-                    }
-                ]);
-
-            if (error) {
-                console.error('🔴 Ошибка от Supabase:', error);
-                alert('Ошибка: ' + error.message);
-            } else {
-                console.log('🟢 Успешно! Данные:', data);
-                alert('Запись добавлена!');
-                form.reset();
-                // Перезагружаем список
-                if (typeof loadRecords === 'function') {
-                    loadRecords();
-                }
-            }
-        } catch (err) {
-            console.error('🔴 Исключение:', err);
-            alert('Ошибка при отправке: ' + err.message);
-        }
+        await addRecord(date, link, comment);
+        form.reset();
     });
+}
 
-    console.log('✅ Обработчик привязан, форма готова');
-});
+// Кнопка обновления
+const refreshBtn = document.getElementById('refreshBtn');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => loadRecords());
+}
+
+// Загружаем записи
+loadRecords();
