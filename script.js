@@ -4,6 +4,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allRecords = [];
 let filteredRecords = [];
 let isLoading = false;
+let cachedData = null;
+let lastLoadTime = 0;
+const CACHE_TTL = 60000; // 60 секунд
 
 let currentFilters = {
     dateFrom: '',
@@ -107,9 +110,19 @@ function switchTab(tableName) {
     }
 }
 
-// ========== ЗАГРУЗКА ДАННЫХ ==========
-async function loadAllData() {
+// ========== ЗАГРУЗКА ДАННЫХ (С КЭШЕМ) ==========
+async function loadAllData(forceRefresh = false) {
     if (isLoading) return;
+
+    const now = Date.now();
+
+    // Используем кэш, если не прошел час и не запрошено принудительное обновление
+    if (!forceRefresh && cachedData && (now - lastLoadTime) < CACHE_TTL) {
+        console.log('📦 Использую кэш');
+        allRecords = cachedData;
+        applyFilters();
+        return;
+    }
 
     isLoading = true;
     const spinner = document.getElementById('loadingSpinner');
@@ -118,10 +131,10 @@ async function loadAllData() {
     try {
         const startTime = performance.now();
 
-        // Загружаем ВСЕ записи без лимита
+        // Параллельные запросы с лимитом для ускорения
         const [consResponse, dutyResponse] = await Promise.all([
-            sb.from('Consultation_scenario').select('*'),
-            sb.from('duty_room').select('*')
+            sb.from('Consultation_scenario').select('id,created_at,link,comment').limit(200),
+            sb.from('duty_room').select('id,period_from,period_to,period,quantity,measures').limit(200)
         ]);
 
         const endTime = performance.now();
@@ -129,7 +142,6 @@ async function loadAllData() {
 
         allRecords = [];
 
-        // Добавляем консультации
         if (consResponse.data && consResponse.data.length > 0) {
             allRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
@@ -142,7 +154,6 @@ async function loadAllData() {
             console.log(`📋 Загружено консультаций: ${consResponse.data.length}`);
         }
 
-        // Добавляем дежурку
         if (dutyResponse.data && dutyResponse.data.length > 0) {
             allRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
@@ -160,12 +171,16 @@ async function loadAllData() {
 
         console.log(`📊 Всего записей: ${allRecords.length}`);
 
+        // Сохраняем в кэш
+        cachedData = allRecords;
+        lastLoadTime = now;
+
         applyFilters();
 
     } catch (error) {
         console.error('❌ Ошибка загрузки:', error);
         const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<td><td colspan="4" style="color: red;">Ошибка загрузки: ${error.message}<\/td><\/tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Ошибка загрузки: ${error.message}<\/td><\/tr>`;
     } finally {
         if (spinner) spinner.style.display = 'none';
         isLoading = false;
@@ -213,7 +228,6 @@ function renderTable() {
         return;
     }
 
-    // Сортируем по дате (новые сверху)
     filteredRecords.sort((a, b) => (b.displayDate || '').localeCompare(a.displayDate || ''));
 
     tbody.innerHTML = filteredRecords.map((record, index) => {
@@ -268,7 +282,7 @@ async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadAllData();
+    loadAllData(true); // force refresh
     return true;
 }
 
@@ -286,7 +300,7 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
 
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Запись в дежурку добавлена!', 'success');
-    loadAllData();
+    loadAllData(true);
     return true;
 }
 
@@ -298,7 +312,7 @@ window.deleteRecord = async function(id, source) {
         showMessage(`❌ ${error.message}`, 'error');
     } else {
         showMessage('✅ Удалено', 'success');
-        loadAllData();
+        loadAllData(true);
     }
 };
 
@@ -386,7 +400,7 @@ window.editRecord = async function(id, source) {
         }
         showMessage('✅ Обновлено', 'success');
         modal.remove();
-        loadAllData();
+        loadAllData(true);
     };
 
     document.getElementById('cancelEditBtn').onclick = () => modal.remove();
