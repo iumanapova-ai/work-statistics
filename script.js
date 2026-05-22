@@ -1,7 +1,8 @@
-// Создаём клиент Supabase (используем переменные из config.js)
+// script.js
+// Создаём клиент Supabase из переменных config.js
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('Страница загружена, Supabase готов');
+console.log('Supabase готов');
 
 // Функция показа сообщений
 function showMessage(text, type) {
@@ -93,13 +94,9 @@ if (form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const dateInput = document.getElementById('date');
-        const linkInput = document.getElementById('link');
-        const commentInput = document.getElementById('comment');
-
-        const date = dateInput ? dateInput.value : '';
-        const link = linkInput ? linkInput.value.trim() : '';
-        const comment = commentInput ? commentInput.value.trim() : '';
+        const date = document.getElementById('date').value;
+        const link = document.getElementById('link').value.trim();
+        const comment = document.getElementById('comment').value.trim();
 
         if (!date) {
             showMessage('❌ Укажите дату', 'error');
@@ -117,7 +114,7 @@ if (form) {
         }
 
         await addRecord(date, link, comment);
-        if (form) form.reset();
+        form.reset();
     });
 }
 

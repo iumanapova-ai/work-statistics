@@ -2,35 +2,67 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Work statistics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work statistics — Консультации</title>
+    <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:,">
 </head>
 <body>
-    <h1>Тест Supabase</h1>
-    <button onclick="testSupabase()">Тест</button>
+    <div class="container">
+        <div class="card">
+            <h1>📊 Сценарии консультаций</h1>
+            <div class="subtitle">Добавьте информацию о консультации</div>
 
+            <form id="consultationForm">
+                <div class="form-group">
+                    <label>📅 Дата и время *</label>
+                    <input type="datetime-local" id="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🔗 Ссылка на консультацию *</label>
+                    <input type="url" id="link" placeholder="https://zoom.us/..." required>
+                    <small>Ссылка должна быть уникальной</small>
+                </div>
+
+                <div class="form-group">
+                    <label>💬 Комментарий (необязательно)</label>
+                    <textarea id="comment" rows="3" placeholder="Дополнительные заметки..."></textarea>
+                </div>
+
+                <button type="submit">➕ Добавить запись</button>
+            </form>
+
+            <div id="message" class="message"></div>
+        </div>
+
+        <div class="card">
+            <h2>📋 Список консультаций</h2>
+            <div style="overflow-x: auto;">
+                <table class="records-table" id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Ссылка</th>
+                            <th>Комментарий</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="button-group">
+                <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПОДКЛЮЧЕНИЕ В ПРАВИЛЬНОМ ПОРЯДКЕ -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Прямо здесь, без отдельных файлов
-        const SUPABASE_URL = 'https://ваш_проект.supabase.co';
-        const SUPABASE_ANON_KEY = 'ваш_anon_ключ';
-        const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        console.log('Supabase готов:', supabase);
-
-        async function testSupabase() {
-            const { data, error } = await supabase
-                .from('Consultation_scenario')
-                .select('*');
-
-            if (error) {
-                console.error('Ошибка:', error);
-                alert('Ошибка: ' + error.message);
-            } else {
-                console.log('Данные:', data);
-                alert('Успех! Найдено записей: ' + (data?.length || 0));
-            }
-        }
-    </script>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
