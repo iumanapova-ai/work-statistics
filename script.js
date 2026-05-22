@@ -116,7 +116,7 @@ async function loadAllData(forceRefresh = false) {
 
     const now = Date.now();
 
-    // Используем кэш, если не прошел час и не запрошено принудительное обновление
+    // Используем кэш если не принудительное обновление и кэш свежий
     if (!forceRefresh && cachedData && (now - lastLoadTime) < CACHE_TTL) {
         console.log('📦 Использую кэш');
         allRecords = cachedData;
@@ -131,10 +131,10 @@ async function loadAllData(forceRefresh = false) {
     try {
         const startTime = performance.now();
 
-        // Параллельные запросы с лимитом для ускорения
+        // Загружаем данные из обеих таблиц
         const [consResponse, dutyResponse] = await Promise.all([
-            sb.from('Consultation_scenario').select('id,created_at,link,comment').limit(200),
-            sb.from('duty_room').select('id,period_from,period_to,period,quantity,measures').limit(200)
+            sb.from('Consultation_scenario').select('*'),
+            sb.from('duty_room').select('*')
         ]);
 
         const endTime = performance.now();
@@ -142,6 +142,7 @@ async function loadAllData(forceRefresh = false) {
 
         allRecords = [];
 
+        // Добавляем консультации
         if (consResponse.data && consResponse.data.length > 0) {
             allRecords.push(...consResponse.data.map(r => ({
                 id: r.id,
@@ -152,8 +153,11 @@ async function loadAllData(forceRefresh = false) {
                 comment: r.comment
             })));
             console.log(`📋 Загружено консультаций: ${consResponse.data.length}`);
+        } else if (consResponse.error) {
+            console.error('Ошибка загрузки консультаций:', consResponse.error);
         }
 
+        // Добавляем дежурку
         if (dutyResponse.data && dutyResponse.data.length > 0) {
             allRecords.push(...dutyResponse.data.map(r => ({
                 id: r.id,
@@ -167,6 +171,8 @@ async function loadAllData(forceRefresh = false) {
                 measures: r.measures
             })));
             console.log(`🚪 Загружено дежурок: ${dutyResponse.data.length}`);
+        } else if (dutyResponse.error) {
+            console.error('Ошибка загрузки дежурки:', dutyResponse.error);
         }
 
         console.log(`📊 Всего записей: ${allRecords.length}`);
@@ -228,6 +234,7 @@ function renderTable() {
         return;
     }
 
+    // Сортируем по дате (новые сверху)
     filteredRecords.sort((a, b) => (b.displayDate || '').localeCompare(a.displayDate || ''));
 
     tbody.innerHTML = filteredRecords.map((record, index) => {
@@ -282,7 +289,7 @@ async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadAllData(true); // force refresh
+    loadAllData(true);
     return true;
 }
 
@@ -295,7 +302,8 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
         period_to: periodTo,
         period: periodText,
         quantity: parseInt(quantity),
-        measures: cleanMeasures
+        measures: cleanMeasures,
+        created_at: new Date().toISOString()
     }]);
 
     if (error) { showMessage(`❌ ${error.message}`, 'error'); return false; }
@@ -346,6 +354,7 @@ window.editRecord = async function(id, source) {
                 <div class="form-group">
                     <label>Меры (JSON)</label>
                     <textarea id="editMeasures" rows="5">${JSON.stringify(data.measures || [], null, 2)}</textarea>
+                    <small style="color: #666;">Формат: [{"type":"new_type","value":"значение"}, ...]</small>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button id="saveEditBtn" class="btn btn-primary">💾 Сохранить</button>
