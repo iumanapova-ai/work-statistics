@@ -1,5 +1,5 @@
 // script.js
-
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Функция показа сообщений
 function showMessage(text, type) {
     const msgDiv = document.getElementById('message');
