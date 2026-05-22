@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
@@ -32,8 +32,8 @@ h1 {
 
 h2 {
     color: #333;
-    margin-bottom: 20px;
     font-size: 22px;
+    margin: 0;
 }
 
 h3 {
@@ -48,6 +48,38 @@ h3 {
     font-size: 14px;
 }
 
+/* ========== ВКЛАДКИ ========== */
+.tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab-btn:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.tab-btn.active {
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+/* ========== ФОРМЫ ========== */
 .form-group {
     margin-bottom: 20px;
 }
@@ -112,6 +144,7 @@ h3 {
     flex: 3;
 }
 
+/* ========== КНОПКИ ========== */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -126,27 +159,20 @@ h3 {
     transform: translateY(-2px);
 }
 
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.btn-secondary {
+.btn-sm {
+    padding: 8px 15px;
+    font-size: 13px;
     background: #6c757d;
     color: white;
 }
 
-.btn-secondary:hover {
+.btn-sm:hover {
     background: #5a6268;
 }
 
-.btn-success {
-    background: #28a745;
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-}
-
-.btn-success:hover {
-    background: #218838;
 }
 
 .btn-measure {
@@ -160,12 +186,7 @@ h3 {
     background: #138496;
 }
 
-.button-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
+/* ========== СООБЩЕНИЯ ========== */
 .message {
     position: fixed;
     bottom: 20px;
@@ -189,6 +210,7 @@ h3 {
     border-left: 4px solid #dc3545;
 }
 
+/* ========== ТАБЛИЦА ========== */
 .records-table {
     width: 100%;
     border-collapse: collapse;
@@ -218,6 +240,89 @@ h3 {
     text-decoration: underline;
 }
 
+/* ========== ФИЛЬТР ========== */
+.filter-icon {
+    width: 40px;
+    height: 40px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid #e0e0e0;
+}
+
+.filter-icon:hover {
+    background: #e0e0e0;
+    transform: scale(1.05);
+}
+
+.filter-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #e0e0e0;
+}
+
+.filter-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+.filter-group input,
+.filter-group select {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* ========== БЭЙДЖИ ИСТОЧНИКОВ ========== */
+.source-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.source-consultation {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.source-duty {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+/* ========== КНОПКИ ДЕЙСТВИЙ ========== */
 .edit-btn {
     background: #ffc107;
     color: #333;
@@ -249,20 +354,57 @@ h3 {
     transform: none;
 }
 
+/* ========== КАРТОЧКИ МЕР ========== */
+.measure-card {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+}
+
+.measure-card input {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.measure-card input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.remove-measure-btn {
+    background: #dc3545;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.remove-measure-btn:hover {
+    background: #c82333;
+}
+
+/* ========== МОДАЛЬНОЕ ОКНО ========== */
 .modal {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
+    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1001;
 }
 
-.modal-content {
+.modal > div {
     background: white;
     padding: 30px;
     border-radius: 15px;
@@ -270,8 +412,8 @@ h3 {
     max-width: 90%;
 }
 
-.modal-content input,
-.modal-content textarea {
+.modal input,
+.modal textarea {
     width: 100%;
     margin-bottom: 15px;
     padding: 10px;
@@ -279,21 +421,9 @@ h3 {
     border-radius: 8px;
 }
 
-.modal-content .button-group {
-    margin-top: 10px;
-}
-
-.hint {
-    display: block;
-    margin-top: 5px;
-    color: #666;
-    font-size: 12px;
-}
-
-.measure-card {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #e0e0e0;
+.modal button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }

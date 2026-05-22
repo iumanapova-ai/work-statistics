@@ -13,16 +13,10 @@
             <h1>📊 Управление консультациями и дежурством</h1>
             <p class="subtitle">Работа с несколькими таблицами</p>
 
-            <!-- Выбор таблицы -->
-            <div class="form-group">
-                <label>🗂️ Выберите таблицу</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="tableSelector" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
-                        <option value="Consultation_scenario">📋 Сценарии консультаций</option>
-                        <option value="duty_room">🚪 Duty room (дежурка)</option>
-                    </select>
-                    <button id="switchTableBtn" class="btn btn-secondary">Переключиться</button>
-                </div>
+            <!-- Вкладки для выбора таблицы -->
+            <div class="tabs">
+                <button class="tab-btn active" data-table="Consultation_scenario">📋 Сценарии консультаций</button>
+                <button class="tab-btn" data-table="duty_room">🚪 Duty room (дежурка)</button>
             </div>
 
             <!-- Форма для Consultation_scenario -->
@@ -46,7 +40,6 @@
                         <span>—</span>
                         <input type="date" id="dutyPeriodTo" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
                     </div>
-                    <small class="hint">Выберите начальную и конечную дату периода</small>
                 </div>
 
                 <div class="form-group">
@@ -63,41 +56,60 @@
                         <button type="button" id="addTaskBtn" class="btn btn-measure">➕ Задача</button>
                         <button type="button" id="addErrorBtn" class="btn btn-measure">➕ Ошибка</button>
                     </div>
-                    <small class="hint">Каждая мера добавляется отдельной кнопкой</small>
                 </div>
 
                 <button id="addDutyBtn" class="btn btn-primary">➕ Добавить в дежурку</button>
             </div>
-
-            <div class="button-group">
-                <button id="refreshBtn" class="btn btn-secondary">🔄 Обновить</button>
-                <button id="combinedReportBtn" class="btn btn-success">📊 Общий список</button>
-            </div>
         </div>
 
-        <!-- Фильтр по периодам для дежурки -->
-        <div id="periodFilterBlock" style="display: none;" class="card">
-            <h3>📅 Фильтр по периодам</h3>
-            <div class="form-row">
-                <input type="text" id="filterPeriod" placeholder="Поиск по периоду" class="flex-1">
-                <button id="applyFilterBtn" class="btn btn-secondary">🔍 Найти</button>
-                <button id="clearFilterBtn" class="btn btn-secondary">❌ Сбросить</button>
-            </div>
-        </div>
-
+        <!-- Таблица с данными -->
         <div class="card">
-            <h2 id="currentTableTitle">📋 Сценарии консультаций</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="currentTableTitle" style="margin: 0;">📋 Все записи</h2>
+                <div class="filter-icon" id="filterIcon">
+                    🔍
+                </div>
+            </div>
+
+            <!-- Панель фильтров -->
+            <div id="filterPanel" class="filter-panel" style="display: none;">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>📅 Дата (ОТ)</label>
+                        <input type="date" id="filterDateFrom">
+                    </div>
+                    <div class="filter-group">
+                        <label>📅 Дата (ДО)</label>
+                        <input type="date" id="filterDateTo">
+                    </div>
+                    <div class="filter-group">
+                        <label>🗂️ Таблица</label>
+                        <select id="filterTable">
+                            <option value="all">Все таблицы</option>
+                            <option value="consultation">Сценарии консультаций</option>
+                            <option value="duty">Duty room (дежурка)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>🔎 Поиск по тексту</label>
+                        <input type="text" id="filterText" placeholder="Поиск...">
+                    </div>
+                    <button id="clearFiltersBtn" class="btn btn-sm">Сбросить</button>
+                </div>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table class="records-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th style="width: 60px;">№</th>
+                            <th style="width: 200px;">Источник</th>
                             <th>Данные</th>
-                            <th>Действия</th>
+                            <th style="width: 120px;">Действия</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <tr><td colspan="3" style="text-align: center;">Загрузка...<\/td><\/tr>
+                        <tr><td colspan="4" style="text-align: center;">Загрузка...<\/td><\/tr>
                     </tbody>
                 </table>
             </div>

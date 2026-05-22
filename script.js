@@ -1,13 +1,77 @@
 // script.js
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentTable = 'Consultation_scenario';
-let currentFilter = '';
-
-const tables = {
-    'Consultation_scenario': '📋 Сценарии консультаций',
-    'duty_room': '🚪 Duty room (дежурка)'
+let allRecords = [];
+let filteredRecords = [];
+let currentActiveTable = 'Consultation_scenario';
+let currentFilters = {
+    dateFrom: '',
+    dateTo: '',
+    table: 'all',
+    text: ''
 };
+
+// ========== РАБОТА С МЕРАМИ ==========
+
+function addMeasureByType(type) {
+    const container = document.getElementById('measuresContainer');
+    if (!container) return;
+
+    const blockDiv = document.createElement('div');
+    blockDiv.className = `measure-card measure-${type}`;
+
+    let title = '', placeholder = '', inputType = 'text';
+
+    switch(type) {
+        case 'new-type':
+            title = '🆕 Новый вид';
+            placeholder = 'Введите новый вид';
+            break;
+        case 'new-solution':
+            title = '💡 Новое решение';
+            placeholder = 'Введите новое решение';
+            break;
+        case 'task':
+            title = '🚀 Задача в разработку';
+            placeholder = 'Ссылка на задачу';
+            inputType = 'url';
+            break;
+        case 'error':
+            title = '⚠️ Ошибка';
+            placeholder = 'Ссылка на ошибку';
+            inputType = 'url';
+            break;
+    }
+
+    blockDiv.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>${title}</strong>
+            <button type="button" class="remove-measure-btn" onclick="this.closest('.measure-card').remove()">✖️</button>
+        </div>
+        <input type="${inputType}" class="measure-value" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+    `;
+
+    container.appendChild(blockDiv);
+}
+
+function collectMeasures() {
+    const measures = [];
+    document.querySelectorAll('#measuresContainer .measure-card').forEach(card => {
+        const value = card.querySelector('.measure-value')?.value;
+        if (!value || value.trim() === '') return;
+
+        if (card.classList.contains('measure-new-type')) {
+            measures.push({ type: 'new_type', value: value.trim() });
+        } else if (card.classList.contains('measure-new-solution')) {
+            measures.push({ type: 'new_solution', value: value.trim() });
+        } else if (card.classList.contains('measure-task')) {
+            measures.push({ type: 'task', value: value.trim() });
+        } else if (card.classList.contains('measure-error')) {
+            measures.push({ type: 'error', value: value.trim() });
+        }
+    });
+    return measures;
+}
 
 function showMessage(text, type) {
     let msgDiv = document.getElementById('message');
@@ -20,124 +84,150 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-// ========== РАБОТА С МЕРАМИ ==========
+// ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
 
-function addMeasureByType(type) {
-    const container = document.getElementById('measuresContainer');
-    if (!container) return;
+function switchTab(tableName) {
+    currentActiveTable = tableName;
 
-    const blockDiv = document.createElement('div');
-    blockDiv.className = `measure-card measure-${type}`;
-    blockDiv.style.cssText = 'background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e0e0e0;';
-
-    let title = '', placeholder = '', inputType = 'text';
-
-    switch(type) {
-        case 'new-type':
-            title = '🆕 Новый вид';
-            placeholder = 'Введите новый вид';
-            inputType = 'text';
-            break;
-        case 'new-solution':
-            title = '💡 Новое решение';
-            placeholder = 'Введите новое решение';
-            inputType = 'text';
-            break;
-        case 'task':
-            title = '🚀 Задача в разработку';
-            placeholder = 'Ссылка на задачу';
-            inputType = 'url';
-            break;
-        case 'error':
-            title = '⚠️ Ошибка';
-            placeholder = 'Ссылка на ошибку';
-            inputType = 'url';
-            break;
-        default:
-            return;
-    }
-
-    blockDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <strong>${title}</strong>
-            <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;" onclick="this.closest('.measure-card').remove()">✖️ Удалить</button>
-        </div>
-        <input type="${inputType}" class="measure-value" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
-    `;
-
-    container.appendChild(blockDiv);
-}
-
-function collectMeasures() {
-    const measures = [];
-
-    document.querySelectorAll('#measuresContainer .measure-card').forEach(card => {
-        const value = card.querySelector('.measure-value')?.value;
-        if (!value) return;
-
-        if (card.classList.contains('measure-new-type')) {
-            measures.push({ type: 'new_type', value: value });
-        } else if (card.classList.contains('measure-new-solution')) {
-            measures.push({ type: 'new_solution', value: value });
-        } else if (card.classList.contains('measure-task')) {
-            measures.push({ type: 'task', value: value });
-        } else if (card.classList.contains('measure-error')) {
-            measures.push({ type: 'error', value: value });
+    // Обновляем активную кнопку
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.table === tableName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
         }
     });
 
-    return measures;
-}
-
-function toggleFormByTable(tableName) {
+    // Показываем нужную форму
     const consultationForm = document.getElementById('consultationForm');
     const dutyForm = document.getElementById('dutyRoomForm');
-    const filterBlock = document.getElementById('periodFilterBlock');
 
-    if (tableName === 'duty_room') {
-        if (consultationForm) consultationForm.style.display = 'none';
-        if (dutyForm) dutyForm.style.display = 'block';
-        if (filterBlock) filterBlock.style.display = 'block';
+    if (tableName === 'Consultation_scenario') {
+        consultationForm.style.display = 'block';
+        dutyForm.style.display = 'none';
     } else {
-        if (consultationForm) consultationForm.style.display = 'block';
-        if (dutyForm) dutyForm.style.display = 'none';
-        if (filterBlock) filterBlock.style.display = 'none';
+        consultationForm.style.display = 'none';
+        dutyForm.style.display = 'block';
     }
 }
 
-async function loadRecords() {
+// ========== ЗАГРУЗКА ДАННЫХ ==========
+
+async function loadAllData() {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="4">Загрузка...<\/td><\/tr>';
+
+    try {
+        const [consData, dutyData] = await Promise.all([
+            sb.from('Consultation_scenario').select('*'),
+            sb.from('duty_room').select('*')
+        ]);
+
+        allRecords = [];
+
+        if (consData.data) {
+            allRecords.push(...consData.data.map(r => ({
+                id: r.id,
+                source: 'consultation',
+                sourceName: 'Сценарии консультаций',
+                displayDate: r.created_at?.split('T')[0] || '',
+                data: {
+                    link: r.link,
+                    comment: r.comment
+                }
+            })));
+        }
+
+        if (dutyData.data) {
+            allRecords.push(...dutyData.data.map(r => ({
+                id: r.id,
+                source: 'duty',
+                sourceName: 'Duty room',
+                displayDate: r.period_from || r.created_at?.split('T')[0] || '',
+                data: {
+                    period_from: r.period_from,
+                    period_to: r.period_to,
+                    period: r.period,
+                    quantity: r.quantity,
+                    measures: r.measures
+                }
+            })));
+        }
+
+        applyFilters();
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="4" style="color: red;">Ошибка загрузки<\/td><\/tr>';
+    }
+}
+
+// ========== ФИЛЬТРАЦИЯ ==========
+
+function applyFilters() {
+    let filtered = [...allRecords];
+
+    // Фильтр по таблице
+    if (currentFilters.table !== 'all') {
+        filtered = filtered.filter(r => r.source === currentFilters.table);
+    }
+
+    // Фильтр по дате (ОТ)
+    if (currentFilters.dateFrom) {
+        filtered = filtered.filter(r => r.displayDate >= currentFilters.dateFrom);
+    }
+
+    // Фильтр по дате (ДО)
+    if (currentFilters.dateTo) {
+        filtered = filtered.filter(r => r.displayDate <= currentFilters.dateTo);
+    }
+
+    // Фильтр по тексту
+    if (currentFilters.text) {
+        const searchText = currentFilters.text.toLowerCase();
+        filtered = filtered.filter(r => {
+            if (r.source === 'consultation') {
+                return r.data.link?.toLowerCase().includes(searchText) ||
+                       r.data.comment?.toLowerCase().includes(searchText);
+            } else {
+                return r.data.period?.toLowerCase().includes(searchText) ||
+                       JSON.stringify(r.data.measures).toLowerCase().includes(searchText);
+            }
+        });
+    }
+
+    filteredRecords = filtered;
+    renderTable();
+}
+
+function renderTable() {
     const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...<\/td><\/tr>';
-    document.getElementById('currentTableTitle').innerHTML = tables[currentTable] || currentTable;
+    if (filteredRecords.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Нет записей<\/td><\/tr>';
+        return;
+    }
 
-    if (currentTable === 'duty_room') {
-        let query = sb.from('duty_room').select('*').order('id', { ascending: false });
-        if (currentFilter) {
-            query = query.ilike('period', `%${currentFilter}%`);
-        }
-        const { data, error } = await query;
+    // Сортируем по дате (новые сверху)
+    filteredRecords.sort((a, b) => (b.displayDate || '').localeCompare(a.displayDate || ''));
 
-        if (error) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
-            return;
-        }
+    tbody.innerHTML = filteredRecords.map((record, index) => {
+        let dataHtml = '';
+        let sourceClass = record.source === 'consultation' ? 'source-consultation' : 'source-duty';
+        let sourceText = record.source === 'consultation' ? '📋 Консультация' : '🚪 Дежурка';
 
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей. Добавьте первую!<\/td><\/tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(record => {
+        if (record.source === 'consultation') {
+            dataHtml = `
+                🔗 <a href="${record.data.link}" target="_blank">${record.data.link}</a><br>
+                💬 Комментарий: ${record.data.comment || '—'}
+            `;
+        } else {
             let measuresHtml = '';
-            if (record.measures && record.measures.length > 0) {
+            if (record.data.measures && record.data.measures.length > 0) {
                 measuresHtml = '<ul style="margin: 5px 0 0 15px;">' +
-                    record.measures.map(m => {
+                    record.data.measures.map(m => {
                         switch(m.type) {
                             case 'new_type': return `<li>🆕 Новый вид: ${m.value}</li>`;
                             case 'new_solution': return `<li>💡 Новое решение: ${m.value}</li>`;
-                            case 'task': return `<li>🚀 <a href="${m.value}" target="_blank">Задача в разработку</a></li>`;
+                            case 'task': return `<li>🚀 <a href="${m.value}" target="_blank">Задача</a></li>`;
                             case 'error': return `<li>⚠️ <a href="${m.value}" target="_blank">Ошибка</a></li>`;
                             default: return '';
                         }
@@ -145,50 +235,28 @@ async function loadRecords() {
                     '</ul>';
             }
 
-            return `
-                <tr>
-                    <td><strong>${record.id}</strong></td>
-                    <td>
-                        📅 <strong>Период:</strong> ${record.period_from && record.period_to ? `${record.period_from} — ${record.period_to}` : record.period}<br>
-                        🔢 <strong>Количество:</strong> ${record.quantity}<br>
-                        📋 <strong>Меры:</strong> ${measuresHtml || '—'}
-                    </td>
-                    <td>
-                        <button class="edit-btn" onclick="editRecord(${record.id})">✏️ Изменить</button>
-                        <button class="delete-btn" onclick="deleteRecord(${record.id})">🗑️ Удалить</button>
-                    </td>
-                </tr>
+            dataHtml = `
+                📅 Период: ${record.data.period_from && record.data.period_to ? `${record.data.period_from} — ${record.data.period_to}` : record.data.period}<br>
+                🔢 Количество: ${record.data.quantity}<br>
+                📋 Меры: ${measuresHtml || '—'}
             `;
-        }).join('');
-
-    } else {
-        const { data, error } = await sb.from('Consultation_scenario').select('*').order('id', { ascending: false });
-
-        if (error) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
-            return;
         }
 
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей. Добавьте первую!<\/td><\/tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(record => `
+        return `
             <tr>
-                <td><strong>${record.id}</strong></td>
+                <td>${index + 1}</td>
+                <td><span class="source-badge ${sourceClass}">${sourceText}</span></td>
+                <td>${dataHtml}</td>
                 <td>
-                    🔗 <a href="${record.link}" target="_blank">${record.link}</a><br>
-                    💬 <strong>Комментарий:</strong> ${record.comment || '—'}
-                </td>
-                <td>
-                    <button class="edit-btn" onclick="editRecord(${record.id})">✏️ Изменить</button>
-                    <button class="delete-btn" onclick="deleteRecord(${record.id})">🗑️ Удалить</button>
-                </td>
+                    <button class="edit-btn" onclick="editRecord(${record.id}, '${record.source}')">✏️</button>
+                    <button class="delete-btn" onclick="deleteRecord(${record.id}, '${record.source}')">🗑️</button>
+                 </td>
             </tr>
-        `).join('');
-    }
+        `;
+    }).join('');
 }
+
+// ========== CRUD ОПЕРАЦИИ ==========
 
 async function addConsultation(link, comment) {
     const { error } = await sb.from('Consultation_scenario').insert([{ link, comment: comment || null }]);
@@ -197,19 +265,20 @@ async function addConsultation(link, comment) {
         return false;
     }
     showMessage('✅ Консультация добавлена!', 'success');
-    loadRecords();
+    loadAllData();
     return true;
 }
 
 async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
     const periodText = `${periodFrom} — ${periodTo}`;
+    const cleanMeasures = measuresArray.filter(m => m.value && m.value.trim() !== '');
 
     const { error } = await sb.from('duty_room').insert([{
         period_from: periodFrom,
         period_to: periodTo,
         period: periodText,
         quantity: parseInt(quantity),
-        measures: measuresArray,
+        measures: cleanMeasures,
         created_at: new Date().toISOString()
     }]);
 
@@ -218,23 +287,25 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measuresArray) {
         return false;
     }
     showMessage('✅ Запись в дежурку добавлена!', 'success');
-    loadRecords();
+    loadAllData();
     return true;
 }
 
-window.deleteRecord = async function(id) {
+window.deleteRecord = async function(id, source) {
     if (!confirm('Удалить запись?')) return;
-    const { error } = await sb.from(currentTable).delete().eq('id', id);
+    const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
+    const { error } = await sb.from(tableName).delete().eq('id', id);
     if (error) {
         showMessage(`❌ Ошибка: ${error.message}`, 'error');
     } else {
         showMessage('✅ Удалено', 'success');
-        loadRecords();
+        loadAllData();
     }
 };
 
-window.editRecord = async function(id) {
-    const { data, error } = await sb.from(currentTable).select('*').eq('id', id).single();
+window.editRecord = async function(id, source) {
+    const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
+    const { data, error } = await sb.from(tableName).select('*').eq('id', id).single();
     if (error) {
         showMessage('Ошибка загрузки', 'error');
         return;
@@ -243,30 +314,31 @@ window.editRecord = async function(id) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'flex';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1001;';
 
-    if (currentTable === 'duty_room') {
+    if (source === 'duty') {
         modal.innerHTML = `
-            <div class="modal-content">
+            <div style="background: white; padding: 30px; border-radius: 15px; width: 500px; max-width: 90%;">
                 <h3>Редактировать запись #${id}</h3>
-                <input type="date" id="editPeriodFrom" value="${data.period_from || ''}" placeholder="Период от">
-                <input type="date" id="editPeriodTo" value="${data.period_to || ''}" placeholder="Период до">
-                <input type="number" id="editQuantity" value="${data.quantity || ''}" placeholder="Количество">
-                <textarea id="editMeasures" rows="5" placeholder="Меры (JSON)">${JSON.stringify(data.measures || [], null, 2)}</textarea>
-                <div class="button-group">
-                    <button id="saveEditBtn">💾 Сохранить</button>
-                    <button id="cancelEditBtn">❌ Отмена</button>
+                <input type="date" id="editPeriodFrom" value="${data.period_from || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+                <input type="date" id="editPeriodTo" value="${data.period_to || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+                <input type="number" id="editQuantity" value="${data.quantity || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+                <textarea id="editMeasures" rows="5" style="width: 100%; margin-bottom: 10px; padding: 8px;">${JSON.stringify(data.measures || [], null, 2)}</textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button id="saveEditBtn" style="padding: 10px 20px;">💾 Сохранить</button>
+                    <button id="cancelEditBtn" style="padding: 10px 20px;">❌ Отмена</button>
                 </div>
             </div>
         `;
     } else {
         modal.innerHTML = `
-            <div class="modal-content">
+            <div style="background: white; padding: 30px; border-radius: 15px; width: 500px; max-width: 90%;">
                 <h3>Редактировать запись #${id}</h3>
-                <input type="url" id="editLink" value="${data.link || ''}" placeholder="Ссылка">
-                <textarea id="editComment" rows="3" placeholder="Комментарий">${data.comment || ''}</textarea>
-                <div class="button-group">
-                    <button id="saveEditBtn">💾 Сохранить</button>
-                    <button id="cancelEditBtn">❌ Отмена</button>
+                <input type="url" id="editLink" value="${data.link || ''}" style="width: 100%; margin-bottom: 10px; padding: 8px;">
+                <textarea id="editComment" rows="3" style="width: 100%; margin-bottom: 10px; padding: 8px;">${data.comment || ''}</textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button id="saveEditBtn" style="padding: 10px 20px;">💾 Сохранить</button>
+                    <button id="cancelEditBtn" style="padding: 10px 20px;">❌ Отмена</button>
                 </div>
             </div>
         `;
@@ -275,7 +347,7 @@ window.editRecord = async function(id) {
     document.body.appendChild(modal);
 
     document.getElementById('saveEditBtn').onclick = async () => {
-        if (currentTable === 'duty_room') {
+        if (source === 'duty') {
             let measuresVal = null;
             try {
                 const measuresInput = document.getElementById('editMeasures').value;
@@ -303,62 +375,66 @@ window.editRecord = async function(id) {
             else showMessage('✅ Обновлено', 'success');
         }
         modal.remove();
-        loadRecords();
+        loadAllData();
     };
 
     document.getElementById('cancelEditBtn').onclick = () => modal.remove();
 };
 
-async function loadCombinedReport() {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
-    document.getElementById('currentTableTitle').innerHTML = '📊 ОБЩИЙ СПИСОК (все таблицы)';
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
 
-    let allRecords = [];
-    const { data: consData } = await sb.from('Consultation_scenario').select('*');
-    if (consData) allRecords.push(...consData.map(r => ({ ...r, source: 'Сценарии консультаций' })));
+document.addEventListener('DOMContentLoaded', () => {
+    // Вкладки
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTab(btn.dataset.table);
+        });
+    });
 
-    const { data: dutyData } = await sb.from('duty_room').select('*');
-    if (dutyData) allRecords.push(...dutyData.map(r => ({ ...r, source: 'Duty room' })));
+    // Фильтр иконка
+    const filterIcon = document.getElementById('filterIcon');
+    const filterPanel = document.getElementById('filterPanel');
+    filterIcon?.addEventListener('click', () => {
+        filterPanel.style.display = filterPanel.style.display === 'none' ? 'block' : 'none';
+    });
 
-    if (allRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей<\/td><\/tr>';
-        return;
+    // Элементы фильтров
+    const filterDateFrom = document.getElementById('filterDateFrom');
+    const filterDateTo = document.getElementById('filterDateTo');
+    const filterTable = document.getElementById('filterTable');
+    const filterText = document.getElementById('filterText');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+    function updateFilters() {
+        currentFilters = {
+            dateFrom: filterDateFrom?.value || '',
+            dateTo: filterDateTo?.value || '',
+            table: filterTable?.value || 'all',
+            text: filterText?.value || ''
+        };
+        applyFilters();
     }
 
-    tbody.innerHTML = allRecords.map(record => `
-        <tr>
-            <td><strong>${record.id}</strong><br><small>[${record.source}]</small></td>
-            <td>
-                ${record.link ? `🔗 <a href="${record.link}" target="_blank">Ссылка</a><br>` : ''}
-                ${record.period ? `📅 ${record.period}<br>🔢 Количество: ${record.quantity || '—'}<br>` : ''}
-                ${record.comment ? `💬 ${record.comment}` : ''}
-            </td>
-            <td><button class="delete-btn" onclick="alert('Удаление из общего списка доступно в конкретной таблице')">❌ Удалить</button></td>
-        </tr>
-    `).join('');
-}
+    filterDateFrom?.addEventListener('change', updateFilters);
+    filterDateTo?.addEventListener('change', updateFilters);
+    filterTable?.addEventListener('change', updateFilters);
+    filterText?.addEventListener('input', updateFilters);
 
-function applyFilter() {
-    currentFilter = document.getElementById('filterPeriod')?.value.trim().toLowerCase() || '';
-    loadRecords();
-}
+    clearFiltersBtn?.addEventListener('click', () => {
+        if (filterDateFrom) filterDateFrom.value = '';
+        if (filterDateTo) filterDateTo.value = '';
+        if (filterTable) filterTable.value = 'all';
+        if (filterText) filterText.value = '';
+        updateFilters();
+    });
 
-function clearFilter() {
-    currentFilter = '';
-    if (document.getElementById('filterPeriod')) document.getElementById('filterPeriod').value = '';
-    loadRecords();
-}
-
-// Инициализация после загрузки страницы
-document.addEventListener('DOMContentLoaded', () => {
-    // Обработчики кнопок добавления мер
+    // Кнопки добавления мер
     document.getElementById('addNewTypeBtn')?.addEventListener('click', () => addMeasureByType('new-type'));
     document.getElementById('addNewSolutionBtn')?.addEventListener('click', () => addMeasureByType('new-solution'));
     document.getElementById('addTaskBtn')?.addEventListener('click', () => addMeasureByType('task'));
     document.getElementById('addErrorBtn')?.addEventListener('click', () => addMeasureByType('error'));
 
-    // Обработчик добавления консультации
+    // Добавление консультации
     document.getElementById('addConsultationBtn')?.addEventListener('click', async () => {
         const link = document.getElementById('consultationLink').value.trim();
         const comment = document.getElementById('consultationComment').value.trim();
@@ -368,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('consultationComment').value = '';
     });
 
-    // Обработчик добавления в дежурку
+    // Добавление в дежурку
     document.getElementById('addDutyBtn')?.addEventListener('click', async () => {
         const periodFrom = document.getElementById('dutyPeriodFrom').value;
         const periodTo = document.getElementById('dutyPeriodTo').value;
@@ -376,10 +452,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const measuresArray = collectMeasures();
 
         if (!periodFrom || !periodTo) {
-            showMessage('❌ Выберите начальную и конечную дату периода', 'error');
+            showMessage('❌ Выберите период', 'error');
             return;
         }
-
         if (!quantity) {
             showMessage('❌ Введите количество', 'error');
             return;
@@ -394,24 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (container) container.innerHTML = '';
     });
 
-    // Переключение таблицы
-    document.getElementById('switchTableBtn')?.addEventListener('click', () => {
-        currentTable = document.getElementById('tableSelector').value;
-        toggleFormByTable(currentTable);
-        loadRecords();
-    });
-
-    // Обновление
-    document.getElementById('refreshBtn')?.addEventListener('click', () => loadRecords());
-
-    // Общий список
-    document.getElementById('combinedReportBtn')?.addEventListener('click', () => loadCombinedReport());
-
-    // Фильтры
-    document.getElementById('applyFilterBtn')?.addEventListener('click', () => applyFilter());
-    document.getElementById('clearFilterBtn')?.addEventListener('click', () => clearFilter());
-
     // Загружаем данные
-    toggleFormByTable(currentTable);
-    loadRecords();
+    switchTab('Consultation_scenario');
+    loadAllData();
 });
