@@ -35,7 +35,7 @@ function addMeasureRow(measureData = null) {
     rowDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;';
 
     rowDiv.innerHTML = `
-        <select class="measure-select" style="flex: 1; padding: 8px;">
+        <select class="measure-select" style="flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
             <option value="">— Выберите меру —</option>
             <option value="Предупреждение">Предупреждение</option>
             <option value="Выговор">Выговор</option>
@@ -44,9 +44,9 @@ function addMeasureRow(measureData = null) {
             <option value="Благодарность">Благодарность</option>
             <option value="Премия">Премия</option>
         </select>
-        <input type="text" placeholder="Новый вид" class="measure-type" style="flex: 1; padding: 8px;">
-        <input type="url" placeholder="Ссылка на ошибку" class="measure-error" style="flex: 2; padding: 8px;">
-        <button type="button" class="remove-measure-btn" style="background: #dc3545; padding: 8px 12px;" onclick="this.parentElement.remove()">✖️</button>
+        <input type="text" placeholder="Новый вид" class="measure-type" style="flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+        <input type="url" placeholder="Ссылка на ошибку" class="measure-error" style="flex: 2; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+        <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer;" onclick="this.parentElement.remove()">✖️</button>
     `;
 
     const addButton = container.querySelector('.add-measure-btn');
@@ -59,7 +59,8 @@ function addMeasureRow(measureData = null) {
 
 function collectMeasures() {
     const measures = [];
-    document.querySelectorAll('#measuresContainer .measure-row:not(:has(.add-measure-btn))').forEach(row => {
+    document.querySelectorAll('#measuresContainer .measure-row').forEach(row => {
+        if (row.querySelector('.add-measure-btn')) return;
         const measure = row.querySelector('.measure-select')?.value;
         const new_type = row.querySelector('.measure-type')?.value;
         const error_link = row.querySelector('.measure-error')?.value;
@@ -90,8 +91,8 @@ async function loadRecords() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="3">Загрузка...<\/td><\/tr>';
-    document.getElementById('currentTableTitle').textContent = tables[currentTable] || currentTable;
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...<\/td><\/tr>';
+    document.getElementById('currentTableTitle').innerHTML = tables[currentTable] || currentTable;
 
     if (currentTable === 'duty_room') {
         let query = sb.from('duty_room').select('*').order('id', { ascending: false });
@@ -101,12 +102,12 @@ async function loadRecords() {
         const { data, error } = await query;
 
         if (error) {
-            tbody.innerHTML = `<tr><td colspan="3" style="color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
             return;
         }
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3">Нет записей. Добавьте первую!<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей. Добавьте первую!<\/td><\/tr>';
             return;
         }
 
@@ -141,12 +142,12 @@ async function loadRecords() {
         const { data, error } = await sb.from('Consultation_scenario').select('*').order('id', { ascending: false });
 
         if (error) {
-            tbody.innerHTML = `<tr><td colspan="3" style="color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">Ошибка: ${error.message}<\/td><\/tr>`;
             return;
         }
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3">Нет записей. Добавьте первую!<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей. Добавьте первую!<\/td><\/tr>';
             return;
         }
 
@@ -287,8 +288,8 @@ window.editRecord = async function(id) {
 
 async function loadCombinedReport() {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="3">Формирование общего списка...<\/td><\/tr>';
-    document.getElementById('currentTableTitle').textContent = '📊 ОБЩИЙ СПИСОК (все таблицы)';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Формирование общего списка...<\/td><\/tr>';
+    document.getElementById('currentTableTitle').innerHTML = '📊 ОБЩИЙ СПИСОК (все таблицы)';
 
     let allRecords = [];
     const { data: consData } = await sb.from('Consultation_scenario').select('*');
@@ -298,14 +299,15 @@ async function loadCombinedReport() {
     if (dutyData) allRecords.push(...dutyData.map(r => ({ ...r, source: 'Duty room' })));
 
     if (allRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3">Нет записей<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Нет записей<\/td><\/tr>';
         return;
     }
 
     tbody.innerHTML = allRecords.map(record => `
         <tr>
             <td><strong>${record.id}</strong><br><small>[${record.source}]</small></td>
-            <td>${record.link ? `🔗 <a href="${record.link}" target="_blank">Ссылка</a><br>` : ''}
+            <td>
+                ${record.link ? `🔗 <a href="${record.link}" target="_blank">Ссылка</a><br>` : ''}
                 ${record.period ? `📅 ${record.period}<br>🔢 Количество: ${record.quantity || '—'}<br>` : ''}
                 ${record.comment ? `💬 ${record.comment}` : ''}
             </td>
@@ -327,13 +329,10 @@ function clearFilter() {
 
 // Инициализация после загрузки страницы
 document.addEventListener('DOMContentLoaded', () => {
-    // Добавляем меру
-    const addMeasureContainer = document.getElementById('measuresContainer');
-    if (addMeasureContainer) {
+    if (document.getElementById('measuresContainer')) {
         addMeasureRow();
     }
 
-    // Обработчики
     const addConsultationBtn = document.getElementById('addConsultationBtn');
     if (addConsultationBtn) {
         addConsultationBtn.addEventListener('click', async () => {

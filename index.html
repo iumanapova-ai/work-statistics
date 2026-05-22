@@ -12,19 +12,17 @@
         <!-- Панель управления -->
         <div class="card">
             <h1>📊 Управление консультациями и дежурством</h1>
-            <div class="subtitle">Работа с несколькими таблицами</div>
+            <p class="subtitle">Работа с несколькими таблицами</p>
 
-            <!-- Красивый переключатель таблиц -->
-            <div class="table-selector-wrapper">
+            <!-- Выбор таблицы -->
+            <div class="form-group">
                 <label>🗂️ Выберите таблицу</label>
-                <div style="display: flex; align-items: center;">
-                    <div class="custom-select">
-                        <select id="tableSelector">
-                            <option value="Consultation_scenario">📋 Сценарии консультаций</option>
-                            <option value="duty_room">🚪 Duty room (дежурка)</option>
-                        </select>
-                    </div>
-                    <button id="switchTableBtn" class="switch-btn">Переключиться</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="tableSelector" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="Consultation_scenario">📋 Сценарии консультаций</option>
+                        <option value="duty_room">🚪 Duty room (дежурка)</option>
+                    </select>
+                    <button id="switchTableBtn" class="btn btn-secondary">Переключиться</button>
                 </div>
             </div>
 
@@ -32,43 +30,43 @@
             <div id="consultationForm" class="form-block">
                 <h3>📝 Добавить консультацию</h3>
                 <div class="form-row">
-                    <input type="url" id="consultationLink" placeholder="Ссылка на консультацию" style="flex: 2;">
-                    <textarea id="consultationComment" rows="1" placeholder="Комментарий" style="flex: 3;"></textarea>
-                    <button id="addConsultationBtn">➕ Добавить</button>
+                    <input type="url" id="consultationLink" placeholder="Ссылка на консультацию" class="flex-2">
+                    <textarea id="consultationComment" rows="1" placeholder="Комментарий" class="flex-3"></textarea>
+                    <button id="addConsultationBtn" class="btn btn-primary">➕ Добавить</button>
                 </div>
             </div>
 
-            <!-- Форма для duty_room (дежурка) -->
+            <!-- Форма для duty_room -->
             <div id="dutyRoomForm" class="form-block" style="display: none;">
                 <h3>🚪 Добавить запись в дежурку</h3>
-                
+
                 <div class="form-group">
                     <label>📅 Период (с ПН по ВСКР) *</label>
-                    <input type="text" id="dutyPeriod" placeholder="например: с 18.05.26 - 24.05.26" style="width: 100%;" required>
+                    <input type="text" id="dutyPeriod" placeholder="например: с 18.05.26 - 24.05.26" class="full-width">
                 </div>
 
                 <div class="form-group">
                     <label>🔢 Количество *</label>
-                    <input type="number" id="dutyQuantity" placeholder="8" style="width: 100%;" required>
+                    <input type="number" id="dutyQuantity" placeholder="8" class="full-width">
                 </div>
 
                 <div class="form-group">
                     <label>📋 Меры (можно выбрать несколько)</label>
                     <div id="measuresContainer">
                         <div class="measure-row">
-                            <button type="button" class="add-measure-btn" onclick="addMeasureRow()">+ Добавить меру</button>
+                            <button type="button" class="btn btn-add-measure" onclick="addMeasureRow()">+ Добавить меру</button>
                         </div>
                     </div>
-                    <small>Можно добавить несколько мер. У каждой будет: мера + новый вид + ссылка на ошибку</small>
+                    <small class="hint">Можно добавить несколько мер. У каждой будет: мера + новый вид + ссылка на ошибку</small>
                 </div>
 
-                <button id="addDutyBtn" class="submit-btn">➕ Добавить в дежурку</button>
+                <button id="addDutyBtn" class="btn btn-primary">➕ Добавить в дежурку</button>
             </div>
 
             <!-- Кнопки действий -->
             <div class="button-group">
-                <button id="refreshBtn" class="refresh-btn">🔄 Обновить</button>
-                <button id="combinedReportBtn" class="combine-btn">📊 Общий список</button>
+                <button id="refreshBtn" class="btn btn-secondary">🔄 Обновить</button>
+                <button id="combinedReportBtn" class="btn btn-success">📊 Общий список</button>
             </div>
         </div>
 
@@ -76,9 +74,9 @@
         <div id="periodFilterBlock" style="display: none;" class="card">
             <h3>📅 Фильтр по периодам</h3>
             <div class="form-row">
-                <input type="text" id="filterPeriod" placeholder="Поиск по периоду (например: 18.05.26)">
-                <button id="applyFilterBtn" class="small-btn">🔍 Найти</button>
-                <button id="clearFilterBtn" class="small-btn">❌ Сбросить</button>
+                <input type="text" id="filterPeriod" placeholder="Поиск по периоду (например: 18.05.26)" class="flex-1">
+                <button id="applyFilterBtn" class="btn btn-secondary">🔍 Найти</button>
+                <button id="clearFilterBtn" class="btn btn-secondary">❌ Сбросить</button>
             </div>
         </div>
 
@@ -86,7 +84,7 @@
         <div class="card">
             <h2 id="currentTableTitle">📋 Сценарии консультаций</h2>
             <div style="overflow-x: auto;">
-                <table class="records-table" id="recordsTable">
+                <table class="records-table">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -101,6 +99,8 @@
             </div>
         </div>
     </div>
+
+    <div id="message" class="message"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
