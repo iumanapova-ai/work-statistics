@@ -953,5 +953,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateAuthUI();
     switchMainTab('add');
-
 });
