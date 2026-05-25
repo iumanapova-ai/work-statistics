@@ -1,5 +1,4 @@
 # Секреты и конфиги (ВАЖНО!)
-config.js
 config.local.js
 .env
 .env.local
