@@ -17,11 +17,9 @@
                     <p class="subtitle">Управление консультациями и дежурством</p>
                 </div>
                 <div class="auth-panel" id="authPanel">
-                    <!-- Неавторизованное состояние -->
                     <div id="unauthBlock" class="unauth-block">
                         <button id="loginBtn" class="btn btn-outline">🔐 Войти</button>
                     </div>
-                    <!-- Авторизованное состояние (скрыто по умолчанию) -->
                     <div id="authBlock" class="auth-block" style="display: none;">
                         <div class="user-info">
                             <span class="user-icon">👤</span>
@@ -97,7 +95,10 @@
             <div id="tabHistory" class="tab-content" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 0;">📋 Все записи</h2>
-                    <button id="exportSelectedBtn" class="btn btn-success">📎 Экспорт выбранных</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="exportSelectedBtn" class="btn btn-success">📎 Экспорт выбранных</button>
+                        <button id="statsReportBtn" class="btn btn-primary">📊 Отчёты</button>
+                    </div>
                 </div>
 
                 <!-- Фильтры -->
@@ -172,6 +173,7 @@
     <!-- Модальное окно входа (заглушка) -->
     <div id="loginModal" class="modal" style="display: none;">
         <div class="modal-content">
+            <button class="modal-close" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">✖️</button>
             <h3>🔐 Авторизация</h3>
             <p style="color: #666; margin-bottom: 20px;">Функционал в разработке</p>
             <div class="form-group">
