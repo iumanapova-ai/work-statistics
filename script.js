@@ -610,14 +610,41 @@ async function addDutyRecord(periodFrom, periodTo, quantity, measures) {
 }
 
 window.deleteRecord = async (id, source) => {
-    logAction('delete_record', { id, source });
+    console.log('=== deleteRecord вызван ===', id, source);
 
     if (!confirm('Удалить запись?')) return;
-    const table = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
-    await sb.from(table).delete().eq('id', id);
-    selectedIds.delete(`${source}_${id}`);
-    showMessage('✅ Удалено', 'success');
-    if (document.getElementById('tabHistory').style.display === 'block') loadHistoryData();
+
+    let table;
+    if (source === 'consultation') table = 'Consultation_scenario';
+    else if (source === 'duty') table = 'duty_room';
+    else if (source === 'appeal') table = 'appeals';
+    else {
+        showMessage('Неизвестный источник', 'error');
+        return;
+    }
+
+    console.log('Удаляем из таблицы:', table, 'id:', id);
+
+    const { data, error } = await sb.from(table).delete().eq('id', id).select();
+
+    if (error) {
+        console.error('Ошибка удаления:', error);
+        showMessage(`❌ Ошибка: ${error.message}`, 'error');
+        return;
+    }
+
+    console.log('Результат удаления:', data);
+
+    if (data && data.length > 0) {
+        selectedIds.delete(`${source}_${id}`);
+        showMessage('✅ Запись удалена', 'success');
+    } else {
+        showMessage('❌ Запись не найдена или не удалена', 'error');
+        return;
+    }
+
+    // Обновляем историю
+    if (typeof loadHistoryData === 'function') loadHistoryData();
 };
 
 // ========== КРАСИВОЕ РЕДАКТИРОВАНИЕ (С КРЕСТИКОМ) ==========
@@ -802,7 +829,12 @@ function openEditDutyModal(id, data) {
 window.editRecord = async (id, source) => {
     logAction('edit_record_start', { id, source });
 
-    const tableName = source === 'consultation' ? 'Consultation_scenario' : 'duty_room';
+    let tableName;
+    if (source === 'consultation') tableName = 'Consultation_scenario';
+    else if (source === 'duty') tableName = 'duty_room';
+    else if (source === 'appeal') tableName = 'appeals';
+    else return;
+
     const { data, error } = await sb.from(tableName).select('*').eq('id', id).single();
     if (error) {
         showMessage('Ошибка загрузки записи', 'error');
@@ -814,8 +846,10 @@ window.editRecord = async (id, source) => {
 
     if (source === 'duty') {
         openEditDutyModal(id, data);
-    } else {
+    } else if (source === 'consultation') {
         openEditConsultationModal(id, data);
+    } else if (source === 'appeal') {
+        openEditAppealModal(id, data);
     }
 };
 
@@ -1146,6 +1180,133 @@ window.toggleSection = function(header) {
         }
     }
 };
+
+function openEditAppealModal(id, data) {
+    // Формируем HTML для мер
+    let measuresHtml = '';
+    if (data.measures && data.measures.length > 0) {
+        measuresHtml = data.measures.map((m, idx) => {
+            let typeClass = '', title = '';
+            switch(m.type) {
+                case 'new-type': typeClass = 'new-type'; title = '🆕 Новый вид'; break;
+                case 'new-solution': typeClass = 'new-solution'; title = '💡 Новое решение'; break;
+                case 'task': typeClass = 'task'; title = '🚀 Задача'; break;
+                case 'error': typeClass = 'error'; title = '⚠️ Ошибка'; break;
+                case 'help': typeClass = 'help'; title = '📚 Изменение документации HELP'; break;
+            }
+            return `
+                <div class="measure-card measure-${typeClass}" style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e0e0e0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong>${title}</strong>
+                        <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; border: none; border-radius: 5px; padding: 4px 8px; cursor: pointer;" onclick="this.closest('.measure-card').remove()">✖️</button>
+                    </div>
+                    <input type="${m.type === 'task' || m.type === 'error' ? 'url' : 'text'}" class="measure-value" value="${(m.value || '').replace(/"/g, '&quot;')}" placeholder="Введите значение" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                </div>
+            `;
+        }).join('');
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 15px; width: 600px; max-width: 90%; max-height: 80vh; overflow-y: auto; position: relative;">
+            <button class="modal-close" onclick="this.closest('.modal').remove()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer;">✖️</button>
+            <h3 style="margin-bottom: 20px;">✏️ Редактировать обращение #${id}</h3>
+
+            <div class="form-group">
+                <label>🔗 Ссылка</label>
+                <input type="url" id="editLink" value="${data.link || ''}" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+            </div>
+
+            <div class="form-group">
+                <label>💬 Комментарий</label>
+                <textarea id="editComment" rows="3" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">${data.comment || ''}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>📋 Меры</label>
+                <div id="editMeasuresContainer">
+                    ${measuresHtml || '<div style="color: #999; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">Нет мер. Добавьте ниже.</div>'}
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-small" id="addNewTypeEditBtn" style="background: #17a2b8; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">➕ Новый вид</button>
+                    <button type="button" class="btn btn-small" id="addNewSolutionEditBtn" style="background: #17a2b8; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">➕ Новое решение</button>
+                    <button type="button" class="btn btn-small" id="addTaskEditBtn" style="background: #17a2b8; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">➕ Задача</button>
+                    <button type="button" class="btn btn-small" id="addErrorEditBtn" style="background: #17a2b8; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">➕ Ошибка</button>
+                    <button type="button" class="btn btn-small" id="addHelpEditBtn" style="background: #6f42c1; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;">📚 + HELP</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">❌ Отмена</button>
+                <button id="saveEditBtn" class="btn btn-primary">💾 Сохранить</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Добавление мер в модальном окне
+    const addMeasureToModal = (type) => {
+        const container = document.getElementById('editMeasuresContainer');
+        if (!container) return;
+        if (container.innerHTML.includes('Нет мер')) container.innerHTML = '';
+
+        let title = '', placeholder = '', inputType = 'text';
+        switch(type) {
+            case 'new-type': title = '🆕 Новый вид'; placeholder = 'Введите новый вид'; break;
+            case 'new-solution': title = '💡 Новое решение'; placeholder = 'Введите новое решение'; break;
+            case 'task': title = '🚀 Задача'; placeholder = 'Ссылка на задачу'; inputType = 'url'; break;
+            case 'error': title = '⚠️ Ошибка'; placeholder = 'Ссылка на ошибку'; inputType = 'url'; break;
+            case 'help': title = '📚 HELP'; placeholder = 'Описание изменения документации'; break;
+        }
+
+        const blockDiv = document.createElement('div');
+        blockDiv.className = `measure-card measure-${type}`;
+        blockDiv.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e0e0e0;';
+        blockDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong>${title}</strong>
+                <button type="button" class="remove-measure-btn" style="background: #dc3545; color: white; border: none; border-radius: 5px; padding: 4px 8px; cursor: pointer;" onclick="this.closest('.measure-card').remove()">✖️</button>
+            </div>
+            <input type="${inputType}" class="measure-value" placeholder="${placeholder}" style="width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;">
+        `;
+        container.appendChild(blockDiv);
+    };
+
+    document.getElementById('addNewTypeEditBtn')?.addEventListener('click', () => addMeasureToModal('new-type'));
+    document.getElementById('addNewSolutionEditBtn')?.addEventListener('click', () => addMeasureToModal('new-solution'));
+    document.getElementById('addTaskEditBtn')?.addEventListener('click', () => addMeasureToModal('task'));
+    document.getElementById('addErrorEditBtn')?.addEventListener('click', () => addMeasureToModal('error'));
+    document.getElementById('addHelpEditBtn')?.addEventListener('click', () => addMeasureToModal('help'));
+
+    document.getElementById('saveEditBtn').onclick = async () => {
+        const measures = [];
+        document.querySelectorAll('#editMeasuresContainer .measure-card').forEach(card => {
+            const value = card.querySelector('.measure-value')?.value;
+            if (!value || value.trim() === '') return;
+            if (card.classList.contains('measure-new-type')) measures.push({ type: 'new_type', value: value.trim() });
+            else if (card.classList.contains('measure-new-solution')) measures.push({ type: 'new_solution', value: value.trim() });
+            else if (card.classList.contains('measure-task')) measures.push({ type: 'task', value: value.trim() });
+            else if (card.classList.contains('measure-error')) measures.push({ type: 'error', value: value.trim() });
+            else if (card.classList.contains('measure-help')) measures.push({ type: 'help', value: value.trim() });
+        });
+
+        const updates = {
+            link: document.getElementById('editLink').value,
+            comment: document.getElementById('editComment').value || null,
+            measures: measures
+        };
+
+        const { error } = await sb.from('appeals').update(updates).eq('id', id);
+        if (error) {
+            showMessage(`❌ ${error.message}`, 'error');
+        } else {
+            showMessage('✅ Обращение обновлено', 'success');
+        }
+        modal.remove();
+        if (typeof loadHistoryData === 'function') loadHistoryData();
+    };
+}
 
 function exportStatsReport(records) {
     logAction('export_stats_report', { count: records.length });
