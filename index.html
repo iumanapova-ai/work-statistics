@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Work statistics</title>
+    <title>Analytics</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <!-- Шапка с авторизацией. -->
+            <!-- Шапка с авторизацией -->
             <div class="header">
                 <div class="header-title">
-                    <h1>📊 Work statistics</h1>
-                    <p class="subtitle">Управление консультациями и дежурством</p>
+                    <h1>📊 HelpDesk Analytics</h1>
+                    <p class="subtitle">Единая платформа для сбора данных</p>
                 </div>
                 <div class="auth-panel" id="authPanel">
                     <div id="unauthBlock" class="unauth-block">
@@ -60,21 +60,18 @@
                 <!-- Форма для duty_room -->
                 <div id="dutyRoomForm" class="form-block" style="display: none;">
                     <h3>🚪 Добавить запись в дежурку</h3>
-
                     <div class="form-group">
                         <label>📅 Период *</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="date" id="dutyPeriodFrom" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <input type="date" id="dutyPeriodFrom" style="flex:1; padding:12px; border:2px solid #e0e0e0; border-radius:8px;">
                             <span>—</span>
-                            <input type="date" id="dutyPeriodTo" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <input type="date" id="dutyPeriodTo" style="flex:1; padding:12px; border:2px solid #e0e0e0; border-radius:8px;">
                         </div>
                     </div>
-
                     <div class="form-group">
                         <label>🔢 Количество *</label>
                         <input type="number" id="dutyQuantity" placeholder="8" class="full-width">
                     </div>
-
                     <div class="form-group">
                         <label>📋 Меры (можно добавить несколько)</label>
                         <div id="measuresContainer"></div>
@@ -85,7 +82,6 @@
                             <button type="button" id="addErrorBtn" class="btn btn-measure">➕ Ошибка</button>
                         </div>
                     </div>
-
                     <div style="display: flex; justify-content: flex-end;">
                         <button id="addDutyBtn" class="btn btn-primary">➕ Добавить запись</button>
                     </div>
@@ -99,8 +95,7 @@
                         <textarea id="appealComment" rows="1" placeholder="Комментарий (необязательно)" class="flex-3"></textarea>
                         <button id="addAppealBtn" class="btn btn-primary">➕ Добавить</button>
                     </div>
-
-                    <div class="form-group" style="margin-top: 15px;">
+                    <div class="form-group" style="margin-top:15px;">
                         <label>📋 Меры (можно добавить несколько)</label>
                         <div id="appealMeasuresContainer"></div>
                         <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
@@ -116,8 +111,15 @@
 
             <!-- ========== ВКЛАДКА 2: ИСТОРИЯ ========== -->
             <div id="tabHistory" class="tab-content" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="margin: 0;">📋 Все записи</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <h2 style="margin:0;">📋 История</h2>
+                        <div class="type-switch">
+                            <button class="type-switch-btn" data-type="consultation">📋 Консультации</button>
+                            <button class="type-switch-btn" data-type="duty">🚪 Дежурка</button>
+                            <button class="type-switch-btn active" data-type="appeal">📞 Обращения</button>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 10px;">
                         <button id="exportSelectedBtn" class="btn btn-success">📎 Экспорт выбранных</button>
                         <button id="statsReportBtn" class="btn btn-primary">📊 Отчёты</button>
@@ -127,92 +129,62 @@
                 <!-- Фильтры -->
                 <div class="filter-panel" style="margin-bottom: 20px;">
                     <div class="filter-row">
-                        <div class="filter-group">
-                            <label>📅 Дата (ОТ)</label>
-                            <input type="date" id="filterDateFrom">
-                        </div>
-                        <div class="filter-group">
-                            <label>📅 Дата (ДО)</label>
-                            <input type="date" id="filterDateTo">
-                        </div>
-                        <div class="filter-group">
-                            <label>🗂️ Таблица</label>
-                            <select id="filterTable">
-                                <option value="all">Все таблицы</option>
-                                <option value="consultation">Сценарии консультаций</option>
-                                <option value="duty">Дежурка</option>
-                                <option value="appeal">Обращения</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>🔎 Поиск по тексту</label>
-                            <input type="text" id="filterText" placeholder="Поиск...">
-                        </div>
+                        <div class="filter-group"><label>📅 Дата (ОТ)</label><input type="date" id="filterDateFrom"></div>
+                        <div class="filter-group"><label>📅 Дата (ДО)</label><input type="date" id="filterDateTo"></div>
+                        <div class="filter-group"><label>🔎 Поиск по тексту</label><input type="text" id="filterText" placeholder="Поиск..."></div>
                         <button id="clearFiltersBtn" class="btn btn-sm">Сбросить</button>
                     </div>
                 </div>
 
-                <!-- Пагинация сверху -->
-                <div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-bottom: 20px;">
-                    <button id="prevPageBtn" class="btn btn-secondary" disabled>◀ Назад</button>
-                    <span id="pageInfo" style="padding: 8px 16px; background: #f8f9fa; border-radius: 8px;">Страница 1</span>
-                    <button id="nextPageBtn" class="btn btn-secondary">Вперед ▶</button>
+                <!-- Счётчик и кнопки управления -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="recordsCount" style="font-size:13px; color:#666;"></span>
+                        <button id="showAllBtn" class="btn btn-small" style="background:#17a2b8;">📋 Показать все</button>
+                        <button id="loadMoreBtn" class="btn btn-secondary" style="display:none;">➕ Ещё +25</button>
+                    </div>
                 </div>
 
                 <!-- Таблица -->
                 <div class="table-wrapper">
-                    <div id="historySpinner" class="spinner-container" style="display: none;">
+                    <div id="historySpinner" class="spinner-container" style="display:none;">
                         <div class="spinner"></div>
                         <p>Загрузка данных...</p>
                     </div>
-
-                    <div style="overflow-x: auto;">
+                    <div style="overflow-x:auto;">
                         <table class="records-table">
-                            <thead>
+                            <thead id="historyTableHead">
                                 <tr>
-                                    <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox"></th>
-                                    <th style="width: 60px;">№</th>
-                                    <th style="width: 180px;">Источник</th>
+                                    <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox"></th>
+                                    <th style="width:60px;">№</th>
+                                    <th style="width:180px;">Источник</th>
                                     <th>Данные</th>
-                                    <th style="width: 110px;">Действия</th>
+                                    <th style="width:110px;">Действия</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTableBody">
-                                <tr><td colspan="5" style="text-align: center;">Загрузка...<\/td><\/tr>
+                                <td><td colspan="5" style="text-align:center;">Загрузка...<\/td><\/tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
-
-                <!-- Пагинация снизу -->
-                <div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-top: 20px;">
-                    <button id="prevPageBtn2" class="btn btn-secondary" disabled>◀ Назад</button>
-                    <span id="pageInfo2" style="padding: 8px 16px; background: #f8f9fa; border-radius: 8px;">Страница 1</span>
-                    <button id="nextPageBtn2" class="btn btn-secondary">Вперед ▶</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно входа (заглушка) -->
+    <!-- Модальное окно входа -->
     <div id="loginModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <button class="modal-close" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">✖️</button>
+            <button class="modal-close" onclick="closeLoginModal()">✖️</button>
             <h3>🔐 Авторизация</h3>
-            <p style="color: #666; margin-bottom: 20px;">Функционал в разработке</p>
-            <div class="form-group">
-                <label>📧 Email</label>
-                <input type="email" id="loginEmail" placeholder="user@example.com">
-            </div>
-            <div class="form-group">
-                <label>🔒 Пароль</label>
-                <input type="password" id="loginPassword" placeholder="••••••••">
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <p style="color:#666; margin-bottom:20px;">Функционал в разработке</p>
+            <div class="form-group"><label>📧 Email</label><input type="email" id="loginEmail" placeholder="user@example.com"></div>
+            <div class="form-group"><label>🔒 Пароль</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
                 <button id="closeLoginModal" class="btn btn-secondary">Отмена</button>
                 <button id="demoLoginBtn" class="btn btn-primary">🚧 Демо-вход</button>
             </div>
-            <p style="margin-top: 15px; font-size: 12px; color: #999;">⚠️ Авторизация временно отключена. Демо-режим.</p>
+            <p style="margin-top:15px; font-size:12px; color:#999;">⚠️ Авторизация временно отключена. Демо-режим.</p>
         </div>
     </div>
 

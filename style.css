@@ -722,3 +722,29 @@ h3 {
 .section-content a {
     word-break: break-all;
 }
+/* Переключатель типа */
+.type-switch {
+    display: flex;
+    background: #f8f9fa;
+    border-radius: 40px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.type-switch-btn {
+    background: transparent;
+    border: none;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #666;
+}
+
+.type-switch-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
