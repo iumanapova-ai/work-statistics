@@ -675,3 +675,50 @@ h3 {
 .modal-content {
     max-width: 400px;
 }
+.source-appeal {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+/* Аккордеон для сводной статистики */
+.accordion-item {
+    margin-bottom: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.accordion-header {
+    cursor: pointer;
+    background: #f8f9fa;
+    padding: 14px 18px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.accordion-header:hover {
+    background: #e9ecef;
+}
+
+.accordion-content {
+    display: none;
+    padding: 16px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+}
+
+.badge {
+    display: inline-block;
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    margin: 2px;
+}
+/* Стили для сворачиваемых блоков в отчёте */
+.section-content {
+    transition: all 0.2s ease;
+}
+
+.section-content a {
+    word-break: break-all;
+}
